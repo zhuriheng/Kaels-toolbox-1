@@ -28,6 +28,7 @@ def _init_():
     Contributor: 
 
     Change log:
+    2017/12/07  v2.2    convert img-data to float before resizing
     2017/11/29  v2.1    support center crop
     2017/11/17  v2.0    support mean and std
     2017/09/25  v1.3    support alternative gpu
@@ -186,8 +187,8 @@ def net_single_infer(model, list_image_path):
             print('image error: ', image_path,
                   ', inference result will be deprecated!')
         img = cv2.cvtColor(img_read, cv2.COLOR_BGR2RGB)
-        img = cv2.resize(img, (resize_width, resize_width))
         img = img.astype(float)
+        img = cv2.resize(img, (resize_width, resize_width))
         # img[:,:,0] -= mean_r
         # img[:,:,0] /= std_r
         # img[:,:,1] -= mean_g
