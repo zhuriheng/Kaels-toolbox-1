@@ -23,11 +23,12 @@ from AvaLib import _time_it
 def _init_():
     '''
     Inference script for image-classification task on mxnet
-    Update: 2017/11/17
+    Update: 2017/12/11
     Author: @Northrend
     Contributor: 
 
     Change log:
+    2017/12/11  v2.3    fix center crop bug
     2017/12/07  v2.2    convert img-data to float before resizing
     2017/11/29  v2.1    support center crop
     2017/11/17  v2.0    support mean and std
@@ -80,6 +81,9 @@ ERROR_LIST = list()
 
 
 class empty_image(Exception):
+    '''
+    catch empty image error
+    '''
     pass
 
 
@@ -87,50 +91,38 @@ def _read_list(image_list_file):
     '''
     read image path file
     file syntax, label is trivial:
-    /path/to/image1.jpg label
-    /path/to/image1.jpg label
+    /path/to/image1.jpg (label)
+    /path/to/image2.jpg (label)
     '''
-    image_list = []
+    image_list = list()
     f_image_list = open(image_list_file, 'r')
     for buff in f_image_list:
         image_list.append(buff.split()[0])
     return image_list
 
 
-# def _make_mean(meanfile):
-#     print('generating mean file...'))
-#     mean_blob = caffe_pb2.BlobProto()
-#     mean_blob.ParseFromString(open(meanfile, 'rb').read())
-#     mean_npy = blobproto_to_array(mean_blob)
-#     mean_npy_shape = mean_npy.shape
-#     mean_npy = mean_npy.reshape(
-#         mean_npy_shape[1], mean_npy_shape[2], mean_npy_shape[3])
-#     print("done.")
-#     return mean_npy
-
-
 def _index_to_classname(label_file, classname_position=1):
     '''
-    load label file and get category list
-    set classname_position=0 to read file which has classname before index
+    load label file and get category list.
+    set classname_position=0 to read file which has classname before index.
     file syntax:
     0 classname
     1 classname
     '''
     f_label = open(label_file, 'r')
-    label_list = []
+    label_list = list()
     for buff in f_label:
         label_list.append(buff.strip().split()[classname_position])
     return label_list
 
 
 def center_crop(img, crop_width):
-    _, _, height, width = img.shape
+    _, height, width = img.shape
     assert (height > crop_width and width >
             crop_width), 'crop size should be larger than image size!'
     top = int(float(height) / 2 - float(crop_width) / 2)
     left = int(float(width) / 2 - float(crop_width) / 2)
-    crop = img[:, :, top:(top + crop_width), left:(left + crop_width)]
+    crop = img[:, top:(top + crop_width), left:(left + crop_width)]
     return crop
 
 
@@ -139,7 +131,7 @@ def net_init():
     initialize mxnet model
     '''
     batch_size = int(args['--batch-size'])
-    image_width = int(args['--img-width'])        # matches model input
+    image_width = int(args['--img-width'])
 
     # get compute graph
     sym, arg_params, aux_params = mx.model.load_checkpoint(
@@ -158,7 +150,7 @@ def net_init():
 
 def net_single_infer(model, list_image_path):
     '''
-    predict label of one single image
+    predict label of one single image.
     '''
     global ERROR_LIST
     Batch = namedtuple('Batch', ['data'])
@@ -197,13 +189,13 @@ def net_single_infer(model, list_image_path):
         # img[:,:,2] /= std_b
         img -= [mean_r, mean_g, mean_b]
         img /= [std_r, std_g, std_b]
-        # (h,w,c) --> (b,c,h,w)
+        # (h,w,c) => (b,c,h,w)
         img = np.swapaxes(img, 0, 2)
         img = np.swapaxes(img, 1, 2)
-        img = img[np.newaxis, :]
+        # img = img[np.newaxis, :]
         if args['--center-crop']:
             img = center_crop(img, image_width)
-        # print(img)
+        # img_batch[index] = mx.nd.array(img)[0]
         img_batch[index] = mx.nd.array(img)[0]
     # print(mx.nd.array(img).shape)
     # print(img_batch.asnumpy())
@@ -234,7 +226,7 @@ def net_single_infer(model, list_image_path):
         result_dict['Top-{} Index'.format(k)] = index_list.tolist()[-k:][::-1]
         result_dict['Top-{} Class'.format(k)] = [label_list[int(i)]
                                                  for i in index_list.tolist()[-k:][::-1]]
-        # avoid JSON serializable error
+        # use str to avoid JSON serializable error
         result_dict['Confidence'] = [str(i) for i in list(
             output_prob)] if args['--confidence'] else [str(i) for i in rate_list.tolist()[-k:][::-1]]
         list_result_dict.append(result_dict)
@@ -254,7 +246,7 @@ def net_list_infer(model, image_list):
         print('Processing {}th batch...'.format(count))
         buffer_image_list = list()
         for _ in xrange(batch_size):
-            if not image_list:    # list is empty
+            if not image_list:      # list is empty
                 break
             elif args['--data-prefix']:
                 buffer_image_list.append(
@@ -264,22 +256,13 @@ def net_list_infer(model, image_list):
         temp_list_result = net_single_infer(model, buffer_image_list)
         for item in temp_list_result:
             dict_result[item['File Name']] = item
-    for image in ERROR_LIST:
+    for image in ERROR_LIST:        # deprecate error img results
         del dict_result[image]
     return dict_result
 
 
 @_time_it.time_it
-def test1():
-    '''
-    test code for one image
-    '''
-    image = args['<in-list>']
-    model = net_init()
-    print(net_single_infer(model, image))
-
-
-def test2():
+def test_2():
     '''
     test code for one batch
     '''

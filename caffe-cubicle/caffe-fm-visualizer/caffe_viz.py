@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # created 2016/8/22 16:11 @Northrend
 #
-# Visualize intermediate filters
+# Visualize internal filters
 # of Convolutional Neural Networks
 
 

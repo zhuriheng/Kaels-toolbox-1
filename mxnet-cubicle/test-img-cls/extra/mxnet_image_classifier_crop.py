@@ -168,6 +168,7 @@ def net_single_infer(model, image_path):
 
     # image preprocessing
     img = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
+    img = img.astype(float)
     img = _short_edge_resize(img,int(image_width/0.875))
     img -= [mean_r,mean_g,mean_b]
     img /= [std_r,std_g,std_b]

@@ -177,9 +177,9 @@ def net_single_infer(model, list_image_path):
             ERROR_LIST.append(os.path.basename(image_path))
             print('image error: ',image_path,', inference result will be deprecated!')
         img = cv2.cvtColor(img_read, cv2.COLOR_BGR2RGB)
+        img = img.astype(float)
         img = cv2.resize(img, (100,100))	# resize image to a smaller size
         img = cv2.resize(img, (resize_width, resize_width))
-        img = img.astype(float)
         # img[:,:,0] -= mean_r
         # img[:,:,0] /= std_r
         # img[:,:,1] -= mean_g
