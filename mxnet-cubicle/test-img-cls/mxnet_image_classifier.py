@@ -118,8 +118,7 @@ def _index_to_classname(label_file, classname_position=1):
 
 def center_crop(img, crop_width):
     _, height, width = img.shape
-    assert (height > crop_width and width >
-            crop_width), 'crop size should be larger than image size!'
+    assert (height > crop_width and width > crop_width), 'crop size should be larger than image size!'
     top = int(float(height) / 2 - float(crop_width) / 2)
     left = int(float(width) / 2 - float(crop_width) / 2)
     crop = img[:, top:(top + crop_width), left:(left + crop_width)]
@@ -134,12 +133,19 @@ def net_init():
     image_width = int(args['--img-width'])
 
     # get compute graph
-    sym, arg_params, aux_params = mx.model.load_checkpoint(
-        args['--model-prefix'], int(args['--model-epoch']))
+    sym, arg_params, aux_params = mx.model.load_checkpoint(args['--model-prefix'], int(args['--model-epoch']))
+
+    # ---- debugging ----
+    # internals = sym.get_internals()
+    # conv0 = internals['conv0_output']
+    # group = mx.symbol.Group([sym, conv0])
+    # ---- debugging ----
 
     # bind module with graph
-    model = mx.mod.Module(symbol=sym, context=mx.gpu(
-        int(args['--gpu'])), label_names=None)
+    # ---- debugging ----
+    # model = mx.mod.Module(symbol=group, context=mx.gpu(int(args['--gpu'])), label_names=None)
+    # ---- debugging ----
+    model = mx.mod.Module(symbol=sym, context=mx.gpu(int(args['--gpu'])), label_names=None)
     model.bind(for_training=False, data_shapes=[
                ('data', (batch_size, 3, image_width, image_width))], label_shapes=model._label_shapes)
 
@@ -156,16 +162,14 @@ def net_single_infer(model, list_image_path):
     Batch = namedtuple('Batch', ['data'])
     batch_size = int(args['--batch-size'])
     image_width = int(args['--img-width'])
-    resize_width = int(args['--pre-crop-width']
-                       ) if args['--center-crop'] else image_width
+    resize_width = int(args['--pre-crop-width']) if args['--center-crop'] else image_width
     k = int(args['--top-k'])
-    mean_r, mean_g, mean_b = float(args['--mean'].split(',')[0]), float(
-        args['--mean'].split(',')[1]), float(args['--mean'].split(',')[2])
-    std_r, std_g, std_b = float(args['--std'].split(',')[0]), float(
-        args['--std'].split(',')[1]), float(args['--std'].split(',')[2])
+    mean_r, mean_g, mean_b = float(args['--mean'].split(',')[0]), float(args['--mean'].split(',')[1]),
+        float(args['--mean'].split(',')[2])
+    std_r, std_g, std_b = float(args['--std'].split(',')[0]), float(args['--std'].split(',')[1]),
+        float(args['--std'].split(',')[2])
 
-    img_batch = mx.nd.array(
-        np.zeros((batch_size, 3, image_width, image_width)))
+    img_batch = mx.nd.array(np.zeros((batch_size, 3, image_width, image_width)))
     for index, image_path in enumerate(list_image_path):
         # image preprocessing
         try:
@@ -173,11 +177,9 @@ def net_single_infer(model, list_image_path):
             if img_read == None:
                 raise empty_image
         except:
-            img_read = np.zeros(
-                (resize_width, resize_width, 3), dtype=np.uint8)
+            img_read = np.zeros((resize_width, resize_width, 3), dtype=np.uint8)
             ERROR_LIST.append(os.path.basename(image_path))
-            print('image error: ', image_path,
-                  ', inference result will be deprecated!')
+            print('image error: ', image_path, ', inference result will be deprecated!')
         img = cv2.cvtColor(img_read, cv2.COLOR_BGR2RGB)
         img = img.astype(float)
         img = cv2.resize(img, (resize_width, resize_width))
@@ -205,6 +207,11 @@ def net_single_infer(model, list_image_path):
     # model.forward(Batch([mx.nd.array(img)]))
     model.forward(Batch([img_batch]))
     output_prob_batch = model.get_outputs()[0].asnumpy()
+
+    # ---- debugging ----
+    # conv_w = model.get_params()[0]['conv0_weight']
+    # print(model.get_outputs()[1].asnumpy()[0,0,:3,:3])
+    # ---- debugging ----
 
     # get label list
     label_list = _index_to_classname(
