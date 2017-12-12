@@ -7,11 +7,13 @@ import mxnet as mx
 import pprint
 
 
-def modify_net(sym):
+def modify_net(sym, arg_params):
     '''
     write your network-modify codes here
     '''
     input_shape = (1, 3, 352, 352)   # input image size, (batch, channel, height, width)
+
+    # modify symbol
     s4_u3_c3 = sym.get_internals()['stage4_unit3_conv3_output']
     s5_u1_c1 = mx.sym.Convolution(data=s4_u3_c3, num_filter=4096, kernel=(3, 3), stride=(
         2, 2), pad=(1, 1), no_bias=True, workspace=512, name='stage5_unit1_conv1')
@@ -21,6 +23,9 @@ def modify_net(sym):
     flatten = mx.symbol.Flatten(data=pool, name='flatten0')
     fc = mx.symbol.FullyConnected(data=flatten, num_hidden=1000, name='fc1')
     softmax = mx.symbol.SoftmaxOutput(data=fc, name='softmax')
+
+    # remove fc1 params
+    arg_new = dict({k: arg_params[k] for k in arg_params if 'fc1' not in k})
 
     # ---- print newly added layers output dim ----
     print('==> Changed layers output dimension:')
@@ -36,15 +41,15 @@ def modify_net(sym):
 
     print('==> New params:')
     pprint.pprint(zip(softmax.list_arguments(), softmax.infer_shape(data=input_shape)[0]))
-    return softmax
+    return softmax, arg_new
 
 
 def main():
     sym, arg_params, aux_params = mx.model.load_checkpoint(sys.argv[1], 0)   # load original model
     print('==> Original params:')
     pprint.pprint(zip(sym.list_arguments(), sym.infer_shape(data=(1, 3, 224, 224))[0]))
-    sym_new = modify_net(sym)
-    mx.model.save_checkpoint(sys.argv[1] + '-modified', 0, sym_new, arg_params, aux_params)
+    sym_new, arg_new = modify_net(sym, arg_params)
+    mx.model.save_checkpoint(sys.argv[1] + '-modified', 0, sym_new, arg_new, aux_params)
     print('New model saved at: {}'.format(sys.argv[1] + '-modified'))
 
 
