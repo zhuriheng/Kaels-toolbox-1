@@ -14,8 +14,9 @@ def modify_net(sym, arg_params):
     input_shape = (1, 3, 352, 352)   # input image size, (batch, channel, height, width)
 
     # modify symbol
-    s4_u3_c3 = sym.get_internals()['stage4_unit3_conv3_output']
-    s5_u1_c1 = mx.sym.Convolution(data=s4_u3_c3, num_filter=4096, kernel=(3, 3), stride=(
+    s4_u3_b3 = sym.get_internals()['stage4_unit3_bn3_output']
+    s4_u3_a3 = mx.sym.Activation(data=s4_u3_b3, act_type='relu', name='stage4_unit3_relu')
+    s5_u1_c1 = mx.sym.Convolution(data=s4_u3_a3, num_filter=4096, kernel=(3, 3), stride=(
         2, 2), pad=(1, 1), no_bias=True, workspace=512, name='stage5_unit1_conv1')
     s5_u1_b1 = mx.sym.BatchNorm(data=s5_u1_c1, fix_gamma=False, eps=2e-5, momentum=0.9, name='stage5_unit1_bn1')
     s5_u1_a1 = mx.sym.Activation(data=s5_u1_b1, act_type='relu', name='stage5_unit1_relu1')
@@ -29,7 +30,8 @@ def modify_net(sym, arg_params):
 
     # ---- print newly added layers output dim ----
     print('==> Changed layers output dimension:')
-    print('stage4_unit3_conv3:', s4_u3_c3.infer_shape(data=input_shape)[1])
+    print('stage4_unit3_bn3:', s4_u3_b3.infer_shape(data=input_shape)[1])
+    print('stage4_unit3_relu3:', s4_u3_a3.infer_shape(data=input_shape)[1])
     print('stage5_unit1_conv1:', s5_u1_c1.infer_shape(data=input_shape)[1])
     print('stage5_unit1_bn1:', s5_u1_b1.infer_shape(data=input_shape)[1])
     print('stage5_unit1_relu1:', s5_u1_a1.infer_shape(data=input_shape)[1])
