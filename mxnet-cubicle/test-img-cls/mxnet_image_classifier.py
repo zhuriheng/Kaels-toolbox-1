@@ -198,7 +198,7 @@ def net_single_infer(model, list_image_path):
         if args['--center-crop']:
             img = center_crop(img, image_width)
         # img_batch[index] = mx.nd.array(img)[0]
-        img_batch[index] = mx.nd.array(img)[0]
+        img_batch[index] = mx.nd.array(img)
     # print(mx.nd.array(img).shape)
     # print(img_batch.asnumpy())
 
