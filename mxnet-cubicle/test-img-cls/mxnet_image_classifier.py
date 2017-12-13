@@ -164,10 +164,10 @@ def net_single_infer(model, list_image_path):
     image_width = int(args['--img-width'])
     resize_width = int(args['--pre-crop-width']) if args['--center-crop'] else image_width
     k = int(args['--top-k'])
-    mean_r, mean_g, mean_b = float(args['--mean'].split(',')[0]), float(args['--mean'].split(',')[1]),
-        float(args['--mean'].split(',')[2])
-    std_r, std_g, std_b = float(args['--std'].split(',')[0]), float(args['--std'].split(',')[1]),
-        float(args['--std'].split(',')[2])
+    mean_r, mean_g, mean_b = float(args['--mean'].split(',')[0]
+                                   ), float(args['--mean'].split(',')[1]), float(args['--mean'].split(',')[2])
+    std_r, std_g, std_b = float(args['--std'].split(',')[0]), float(args['--std'].split(',')
+                                                                    [1]), float(args['--std'].split(',')[2])
 
     img_batch = mx.nd.array(np.zeros((batch_size, 3, image_width, image_width)))
     for index, image_path in enumerate(list_image_path):

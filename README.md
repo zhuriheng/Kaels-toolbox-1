@@ -10,6 +10,7 @@ List of available tools
       * `mxnet-visualizer` - Draw curves according to training log
       * `test-img-cls` - Do image-classification inference
       * `train-img-cls` - Start training job for image-classification task
+      * `recordio_traverse.py` - Traverse a RecordIO file 
 2. `caffe-cubicle/` - Caffe tools
       * `caffe-visualizer` - Draw curves according to training log
       * `caffe-fm-visualizer` - Visualize internal featuremap
@@ -17,9 +18,10 @@ List of available tools
       * `train-img-cls` - Start training job for image-classification task  
 3. `pytorch-cubicle/` - Pytorch tools
 4. `labelX-cubicle/` - LabelX tools
-5. `gen_labelx_jsonlist.py` - Generate labelX-standard jsonlist
-6. `download_from_urls.py` - Multi-threading downloading scripts  
-7. `classification_evaluator.py` - Evaluate image classification results
+      * `gen_labelx_jsonlist.py` - Generate labelX-standard jsonlist
+      * `labelx_jsonlist_adapter.py` - Convert labelX-standard jsonlist to useable format
+5. `download_from_urls.py` - Multi-threading downloading scripts  
+6. `classification_evaluator.py` - Evaluate image classification results
 
 ## Requirements
 
