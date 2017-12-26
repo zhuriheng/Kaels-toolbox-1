@@ -8,14 +8,14 @@ List of available tools
 1. `mxnet-cubicle/` - MXNet tools
       * `mxnet-cam` - Draw class activation mapping
       * `mxnet-visualizer` - Draw curves according to training log
-      * `test-img-cls` - Do image-classification inference
-      * `train-img-cls` - Start training job for image-classification task
+      * `img-cls` - Image-classification task
+      * `obj-det` - Object-detection task
       * `recordio_traverse.py` - Traverse a RecordIO file 
+      * `mxnet_setup.sh` - Auto-install mxnet
 2. `caffe-cubicle/` - Caffe tools
       * `caffe-visualizer` - Draw curves according to training log
       * `caffe-fm-visualizer` - Visualize internal featuremap
-      * `test-img-cls` - Do image-classification inference
-      * `train-img-cls` - Start training job for image-classification task  
+      * `img-cls` - Image-classification task
 3. `pytorch-cubicle/` - Pytorch tools
 4. `labelX-cubicle/` - LabelX tools
       * `gen_labelx_jsonlist.py` - Generate labelX-standard jsonlist
