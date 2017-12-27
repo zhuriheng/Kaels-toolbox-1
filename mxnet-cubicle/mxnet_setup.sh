@@ -1,6 +1,6 @@
 # Setup MXNet with ubuntu os
 
-MXNET_VERSION="0.12.1"
+MXNET_VERSION="1.0.0"
 echo 'mxnet version: $MXNET_VERSION'
 cd /opt/
 apt-get update

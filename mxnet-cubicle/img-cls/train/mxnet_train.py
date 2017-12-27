@@ -31,11 +31,12 @@ fhandler = None     # log to file
 def _init_():
     '''
     Training script for image-classification task on mxnet
-    Update: 2017/12/04
+    Update: 2017/12/27
     Author: @Northrend
     Contributor:
 
     Changelog:
+    2017/12/27  v2.6        support se-inception-v4
     2017/12/04  v2.5        support change shorter edge size
     2017/11/21  v2.4        support input nomalization
     2017/09/22  v2.3        support resume training job 
@@ -85,7 +86,7 @@ def _init_():
         --gpus=lst                  list of gpus to run, e.g. 0 or 0,2,5 (mxnet will use cpu by default)
         --kv-store=str              key-value store type [default: device]
         --network=str               net architecture [default: alexnet]
-        --num-layers=int            number of layers in the neural network, required by some networks such as resnet
+        --num-layers=int            number of layers in the neural network, required by some networks such as resnet [default: 0]
         --pretrained-model=str      pre-trained model path [default: model/resnet-50]
         --load-epoch=int            load the model on an epoch using the model-load-prefix [default: 0]
         --num-classes=int           number of classes [default: 256]
