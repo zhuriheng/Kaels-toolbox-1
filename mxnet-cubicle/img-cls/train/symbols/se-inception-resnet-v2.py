@@ -291,9 +291,15 @@ def circle_in5c(name, data, scale, ratio,
     return in5c
 
 # create SE inception-resnet-v2
-def get_symbol(ratio, num_classes=1000, scale=True):
+def get_symbol(num_classes=1000, num_layers=666, image_shape='3,224,224', **kwargs):
     # input shape 229*229*3 (old)
     # input shape 224*224*3 (new)
+    image_shape = [int(l) for l in image_shape.split(',')]
+    (nchannel, height, width) = image_shape 
+
+    ratio_list = [0.25, 0.125, 0.0625, 0.03125]
+    scale=True
+
     data = mx.symbol.Variable(name="data")
     bn_mom = 0.9
 
@@ -321,7 +327,7 @@ def get_symbol(ratio, num_classes=1000, scale=True):
     (num_3_1, num_3_2, num_3_3) = (32, 48, 64)
     cat = 384
 
-    in5a = circle_in5a('in5a', in_stem, scale, ratio,
+    in5a = circle_in5a('in5a', in_stem, scale, ratio_list[2],
                        num_1_1,
                        num_2_1, num_2_2,
                        num_3_1, num_3_2, num_3_3,
@@ -343,7 +349,7 @@ def get_symbol(ratio, num_classes=1000, scale=True):
     (num_2_1, num_2_2, num_2_3) = (128, 160, 192)
     cat = 1152
 
-    in10b = circle_in10b('in10b', re3a, scale, ratio,
+    in10b = circle_in10b('in10b', re3a, scale, ratio_list[2],
                          num_1_1,
                          num_2_1, num_2_2, num_2_3,
                          cat,
@@ -366,7 +372,7 @@ def get_symbol(ratio, num_classes=1000, scale=True):
     (num_2_1, num_2_2, num_2_3) = (192, 224, 256)
     cat = 2144
 
-    in5c = circle_in5c('in5c', re4b, scale, ratio,
+    in5c = circle_in5c('in5c', re4b, scale, ratio_list[2],
                         num_1_1,
                         num_2_1, num_2_2, num_2_3,
                         cat,
