@@ -64,12 +64,11 @@ def _init_():
 class cons_worker(threading.Thread):
     global GLOBAL_LOCK
 
-    def __init__(self, queue, md5_list, md5_uniq, file_uniq, delete_dup=False):
+    def __init__(self, queue, md5_list, md5_dict, delete_dup=False):
         threading.Thread.__init__(self)
         self.queue = queue
         self.md5_list = md5_list
-        self.md5_uniq = md5_uniq
-        self.file_uniq = file_uniq
+        self.md5_dict = md5_dict
         self.delete_dup = delete_dup
 
     def run(self):
@@ -80,17 +79,15 @@ class cons_worker(threading.Thread):
                 GLOBAL_LOCK.release()
                 md5_temp = get_md5(temp)
                 GLOBAL_LOCK.acquire()
-                self.md5_list.append((md5_temp, temp))
-                GLOBAL_LOCK.release()
-                if md5_temp not in self.md5_uniq:
-                    GLOBAL_LOCK.acquire()
-                    self.md5_uniq.append(md5_temp)
-                    self.file_uniq.append(temp)
-                    GLOBAL_LOCK.release()
-                # delete duplicates
-                elif md5_temp in self.md5_uniq and self.delete_dup:
+                self.md5_list.append((temp, md5_temp))
+                if md5_temp in self.md5_dict:
+                    self.md5_dict[md5_temp].append(temp)
+                    # delete duplicates
                     os.system('rm {}'.format(temp))
                     REMOVE_NUMBER += 1
+                else:
+                    self.md5_dict[md5_temp] = [temp]
+                GLOBAL_LOCK.release()
             else:
                 pass
         GLOBAL_LOCK.acquire()
@@ -121,29 +118,29 @@ def main():
         queue.put(item)
     print('file number:', queue.qsize())
     md5_list = list()
-    md5_uniq = list()
-    file_uniq = list()
+    md5_dict = dict()
+    uniq_list = list()
     thread_count = int(args['<thread-number>'])
     delete_dup = True if args['--delete-dup'] else False
     for i in xrange(thread_count):
-        exec('thread_cons_{} = cons_worker(queue, md5_list, md5_uniq, file_uniq, delete_dup)'.format(i))
+        exec('thread_cons_{} = cons_worker(queue, md5_list, md5_dict, delete_dup)'.format(i))
         eval('thread_cons_{}.start()'.format(i))
     for i in xrange(thread_count):
         eval('thread_cons_{}.join()'.format(i))
-    print('uniq file number:', len(file_uniq))
+    for key in md5_dict:
+        uniq_list.append(md5_dict[key][0])
+    print('uniq file number:', len(uniq_list))
     print('removed file number:', REMOVE_NUMBER)
-    # pprint.pprint(md5_list)
 
     # write results
-    md5_list.sort(key=lambda x: x[0])
-    # pprint.pprint(md5_list)
+    md5_list.sort(key=lambda x: x[1])
     with open(args['<outfile>'], 'w') as f:
         for item in md5_list:
             f.write('{}\t{}\n'.format(item[0], item[1]))
     if args['--uniq-filelist']:
         with open(args['--uniq-filelist'], 'w') as f:
-            for item in file_uniq:
-                # get file name
+            for item in uniq_list:
+                # get original file name from input list
                 temp = str(item).replace(args['--data-prefix'], '') if args['--data-prefix'] else str(item)
                 f.write(temp + '\n')
 
