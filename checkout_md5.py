@@ -83,8 +83,9 @@ class cons_worker(threading.Thread):
                 if md5_temp in self.md5_dict:
                     self.md5_dict[md5_temp].append(temp)
                     # delete duplicates
-                    os.system('rm {}'.format(temp))
-                    REMOVE_NUMBER += 1
+                    if args['--delete-dup']:
+                        os.system('rm {}'.format(temp))
+                        REMOVE_NUMBER += 1
                 else:
                     self.md5_dict[md5_temp] = [temp]
                 GLOBAL_LOCK.release()
