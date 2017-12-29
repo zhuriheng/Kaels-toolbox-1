@@ -122,12 +122,14 @@ def main():
     md5_dict = dict()
     uniq_list = list()
     thread_count = int(args['<thread-number>'])
-    delete_dup = True if args['--delete-dup'] else False
+    delete_dup = args['--delete-dup'] 
+    tic = time.time()
     for i in xrange(thread_count):
         exec('thread_cons_{} = cons_worker(queue, md5_list, md5_dict, delete_dup)'.format(i))
         eval('thread_cons_{}.start()'.format(i))
     for i in xrange(thread_count):
         eval('thread_cons_{}.join()'.format(i))
+    print('md5 time: {:.4f}s'.format(time.time() - tic))
     for key in md5_dict:
         uniq_list.append(md5_dict[key][0])
     print('uniq file number:', len(uniq_list))

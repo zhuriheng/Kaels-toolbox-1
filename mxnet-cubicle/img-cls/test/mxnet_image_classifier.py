@@ -23,11 +23,12 @@ from AvaLib import _time_it
 def _init_():
     '''
     Inference script for image-classification task on mxnet
-    Update: 2017/12/11
+    Update: 2017/12/29
     Author: @Northrend
     Contributor: 
 
     Change log:
+    2017/12/29  v2.4    fix numpy truth value err bug
     2017/12/11  v2.3    fix center crop bug
     2017/12/07  v2.2    convert img-data to float before resizing
     2017/11/29  v2.1    support center crop
@@ -174,7 +175,7 @@ def net_single_infer(model, list_image_path):
         # image preprocessing
         try:
             img_read = cv2.imread(image_path)
-            if img_read == None:
+            if np.shape(img_read) == tuple():
                 raise empty_image
         except:
             img_read = np.zeros((resize_width, resize_width, 3), dtype=np.uint8)
