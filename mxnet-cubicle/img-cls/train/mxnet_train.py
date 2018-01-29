@@ -31,11 +31,12 @@ fhandler = None     # log to file
 def _init_():
     '''
     Training script for image-classification task on mxnet
-    Update: 2017/12/27
+    Update: 2018/01/29
     Author: @Northrend
     Contributor:
 
     Changelog:
+    2018/01/29  v2.7        fix resume training job bugs
     2017/12/27  v2.6        support se-inception-v4
     2017/12/04  v2.5        support change shorter edge size
     2017/11/21  v2.4        support input nomalization
@@ -344,9 +345,11 @@ def _whatever_the_fucking_fit_is(symbol, arg_params, aux_params, train, val, bat
         mod.init_params(initializer=mx.init.Xavier(
             rnd_type='gaussian', factor_type="in", magnitude=2))
     if args['--finetune']:
-        # replace all parameters except for the last fully-connected layer with
-        # pre-trained model
+        # replace all parameters except for the last fully-connected layer with pre-trained model
         mod.set_params(arg_params, aux_params, allow_missing=True)
+    elif args['--resume']:
+        # set weights 
+        mod.set_params(arg_params, aux_params, allow_missing=False, allow_extra=False)
 
     # set metrics during training
     # if len(args['--metrics'].split(',')) == 1:
@@ -362,6 +365,7 @@ def _whatever_the_fucking_fit_is(symbol, arg_params, aux_params, train, val, bat
 
     mod.fit(train, val,
             eval_metric=metrics,
+            begin_epoch=int(args['--load-epoch']) if args['--resume'] else 0,
             num_epoch=int(args['--num-epochs']),
             kvstore=kv,
             optimizer=args['--optimizer'],
@@ -405,7 +409,7 @@ def main():
         (new_sym, new_args) = _get_fine_tune_model(sym, arg_params, num_classes)
     elif args['--resume']:
         # load model
-        sym, arg_params, aux_params = mx.model.load_checkpoint(
+        new_sym, new_args, aux_params = mx.model.load_checkpoint(
             args['--pretrained-model'], int(args['--load-epoch']))
         logger.info('model loaded successfully, resume training job...')
     else:
