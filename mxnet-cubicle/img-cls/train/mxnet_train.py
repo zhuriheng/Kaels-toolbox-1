@@ -61,7 +61,7 @@ def _init_():
                             [--model-prefix=str --num-epochs=int --threshold=flt --gpus=lst]
                             [--kv-store=str --network=str --num-layers=int --pretrained-model=str]
                             [--load-epoch=int --num-classes=int  --num-samples=int --img-width=int]
-                            [--resize=int --resize-scale=lst]
+                            [--resize=int --resize-scale=lst --data-type=str]
                             [--batch-size=int --optimizer=str --lr=flt --lr-factor=flt --momentum=flt]
                             [--weight-decay=flt --lr-step-epochs=lst --disp-batches=int --disp-lr]
                             [--top-k=int --metrics=lst --dropout=flt --num-groups=int --mean=lst --std=lst]
@@ -98,6 +98,7 @@ def _init_():
         --img-width=int             input image size, keep width=height [default: 224]
         --resize=int                set to resize shorter edge if needed [default: -1]
         --resize-scale=lst          set to randomly resize shorter edge in this scale range [default: 1,1]
+        --data-type=str             set to change input data type 
         --batch-size=int            the batch size on each gpu [default: 128]
         --dropout=flt               set dropout probability if needed [default: 0]
         --optimizer=str             optimizer type [default: sgd]
@@ -179,7 +180,7 @@ def _save_model(model_prefix, rank=0):
         model_prefix, rank))
 
 
-def _get_iterators(data_train, data_dev, batch_size, data_shape=(3, 224, 224), resize=-1):
+def _get_iterators(data_train, data_dev, batch_size, data_shape=(3, 224, 224), resize=-1, dtype=None):
     '''
     define the function which returns the data iterators
     '''
@@ -188,6 +189,7 @@ def _get_iterators(data_train, data_dev, batch_size, data_shape=(3, 224, 224), r
     [max_random_scale, min_random_scale] = [float(x) for x in args['--resize-scale'].split(',')]
     logger.info('Input normalization params: mean_rgb {}, std_rgb {}'.format([mean_r, mean_g, mean_b],[std_r, std_g, std_b]))
     train = mx.io.ImageRecordIter(
+        dtype=dtype,
         path_imgrec=data_train,
 	# preprocess_threads=32,
         data_name='data',
@@ -208,6 +210,7 @@ def _get_iterators(data_train, data_dev, batch_size, data_shape=(3, 224, 224), r
         std_b=std_b
         )
     val = mx.io.ImageRecordIter(
+        dtype=dtype,
         path_imgrec=data_dev,
 	# preprocess_threads=32,
         data_name='data',
@@ -391,8 +394,9 @@ def main():
     num_gpus = len(args['--gpus'].split(',')
                    ) if args['--gpus'] is not None else 1
     batch_size = batch_per_gpu * num_gpus
+    data_type = args['--data-type'] if args['--data-type'] else None
     (train, val) = _get_iterators(args['--data-train'], args['--data-dev'],
-                                  batch_size, data_shape=(3, int(args['--img-width']), int(args['--img-width'])), resize=int(args['--resize']))
+                                  batch_size, data_shape=(3, int(args['--img-width']), int(args['--img-width'])), resize=int(args['--resize']), dtype=data_type)
 
     # io testing mode
     if args['--test-io']:
