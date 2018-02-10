@@ -36,6 +36,7 @@ def _init_():
     Contributor:
 
     Changelog:
+    2018/02/10  v2.9        support resize dev data separately
     2018/02/03  v2.8        support random resize scale
     2018/01/29  v2.7        fix resume training job bugs
     2017/12/27  v2.6        support se-inception-v4
@@ -61,7 +62,7 @@ def _init_():
                             [--model-prefix=str --num-epochs=int --threshold=flt --gpus=lst]
                             [--kv-store=str --network=str --num-layers=int --pretrained-model=str]
                             [--load-epoch=int --num-classes=int  --num-samples=int --img-width=int]
-                            [--resize=int --resize-scale=lst --data-type=str]
+                            [--resize=lst --resize-scale=lst --data-type=str]
                             [--batch-size=int --optimizer=str --lr=flt --lr-factor=flt --momentum=flt]
                             [--weight-decay=flt --lr-step-epochs=lst --disp-batches=int --disp-lr]
                             [--top-k=int --metrics=lst --dropout=flt --num-groups=int --mean=lst --std=lst]
@@ -96,7 +97,7 @@ def _init_():
         --num-samples=int           number of samples in training data [default: 15304]
         --num-groups=int            value of cardinality for resnext [default: 32]
         --img-width=int             input image size, keep width=height [default: 224]
-        --resize=int                set to resize shorter edge if needed [default: -1]
+        --resize=lst                set to resize shorter edge of train and dev data if needed [default: -1,-1]
         --resize-scale=lst          set to randomly resize shorter edge in this scale range [default: 1,1]
         --data-type=str             set to change input data type 
         --batch-size=int            the batch size on each gpu [default: 128]
@@ -180,7 +181,7 @@ def _save_model(model_prefix, rank=0):
         model_prefix, rank))
 
 
-def _get_iterators(data_train, data_dev, batch_size, data_shape=(3, 224, 224), resize=-1, dtype=None):
+def _get_iterators(data_train, data_dev, batch_size, data_shape=(3, 224, 224), resize=[-1, -1], dtype=None):
     '''
     define the function which returns the data iterators
     '''
@@ -188,6 +189,7 @@ def _get_iterators(data_train, data_dev, batch_size, data_shape=(3, 224, 224), r
     [std_r, std_g, std_b] = [float(x) for x in args['--std'].split(',')]
     [max_random_scale, min_random_scale] = [float(x) for x in args['--resize-scale'].split(',')]
     logger.info('Input normalization params: mean_rgb {}, std_rgb {}'.format([mean_r, mean_g, mean_b],[std_r, std_g, std_b]))
+    [resize_train, resize_dev] = resize
     train = mx.io.ImageRecordIter(
         dtype=dtype,
         path_imgrec=data_train,
@@ -196,7 +198,7 @@ def _get_iterators(data_train, data_dev, batch_size, data_shape=(3, 224, 224), r
         label_name='softmax_label',
         batch_size=batch_size,
         data_shape=data_shape,
-        resize=resize,
+        resize=resize_train,
         max_random_scale=max_random_scale,
         min_random_scale=min_random_scale,
         shuffle=True,
@@ -217,7 +219,7 @@ def _get_iterators(data_train, data_dev, batch_size, data_shape=(3, 224, 224), r
         label_name='softmax_label',
         batch_size=batch_size,
         data_shape=data_shape,
-        # resize=resize,
+        resize=resize_dev,
         shuffle=False,
         rand_crop=False,
         rand_mirror=False,
@@ -391,12 +393,13 @@ def main():
     # prepare arguments
     num_classes = int(args['--num-classes'])
     batch_per_gpu = int(args['--batch-size'])
+    resize = [int(x) for x in args['--resize'].split(',')]
     num_gpus = len(args['--gpus'].split(',')
                    ) if args['--gpus'] is not None else 1
     batch_size = batch_per_gpu * num_gpus
     data_type = args['--data-type'] if args['--data-type'] else None
     (train, val) = _get_iterators(args['--data-train'], args['--data-dev'],
-                                  batch_size, data_shape=(3, int(args['--img-width']), int(args['--img-width'])), resize=int(args['--resize']), dtype=data_type)
+                                  batch_size, data_shape=(3, int(args['--img-width']), int(args['--img-width'])), resize=resize, dtype=data_type)
 
     # io testing mode
     if args['--test-io']:
