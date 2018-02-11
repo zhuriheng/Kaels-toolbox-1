@@ -31,11 +31,12 @@ fhandler = None     # log to file
 def _init_():
     '''
     Training script for image-classification task on mxnet
-    Update: 2018/02/03
+    Update: 2018/02/11
     Author: @Northrend
     Contributor:
 
     Changelog:
+    2018/02/11  v3.0        support customized finetune layer name
     2018/02/10  v2.9        support resize dev data separately
     2018/02/03  v2.8        support random resize scale
     2018/01/29  v2.7        fix resume training job bugs
@@ -62,7 +63,7 @@ def _init_():
                             [--model-prefix=str --num-epochs=int --threshold=flt --gpus=lst]
                             [--kv-store=str --network=str --num-layers=int --pretrained-model=str]
                             [--load-epoch=int --num-classes=int  --num-samples=int --img-width=int]
-                            [--resize=lst --resize-scale=lst --data-type=str]
+                            [--resize=lst --resize-scale=lst --data-type=str --finetune-layer=str]
                             [--batch-size=int --optimizer=str --lr=flt --lr-factor=flt --momentum=flt]
                             [--weight-decay=flt --lr-step-epochs=lst --disp-batches=int --disp-lr]
                             [--top-k=int --metrics=lst --dropout=flt --num-groups=int --mean=lst --std=lst]
@@ -100,6 +101,7 @@ def _init_():
         --resize=lst                set to resize shorter edge of train and dev data if needed [default: -1,-1]
         --resize-scale=lst          set to randomly resize shorter edge in this scale range [default: 1,1]
         --data-type=str             set to change input data type 
+        --finetune-layer=str        set customized finetune layer name
         --batch-size=int            the batch size on each gpu [default: 128]
         --dropout=flt               set dropout probability if needed [default: 0]
         --optimizer=str             optimizer type [default: sgd]
@@ -415,11 +417,12 @@ def main():
 
     if args['--finetune']:
         # load pre-trained model
+        layer_name = args['--finetune-layer'] if args['--finetune-layer'] else 'flatten0'
         sym, arg_params, aux_params = mx.model.load_checkpoint(
             args['--pretrained-model'], int(args['--load-epoch']))
         logger.info('pre-trained model loaded successfully, start finetune job...')
         # adapt original network to finetune network
-        (new_sym, new_args) = _get_fine_tune_model(sym, arg_params, num_classes)
+        (new_sym, new_args) = _get_fine_tune_model(sym, arg_params, num_classes, layer_name=layer_name)
     elif args['--resume']:
         # load model
         new_sym, new_args, aux_params = mx.model.load_checkpoint(
