@@ -359,7 +359,7 @@ def _whatever_the_fucking_fit_is(symbol, arg_params, aux_params, train, val, bat
             rnd_type='gaussian', factor_type="in", magnitude=2))
     if args['--finetune']:
         # replace all parameters except for the last fully-connected layer with pre-trained model
-        mod.set_params(arg_params, aux_params, allow_missing=True)
+        mod.set_params(arg_params, aux_params, allow_missing=True, allow_extra=True)
     elif args['--resume']:
         # set weights 
         mod.set_params(arg_params, aux_params, allow_missing=False, allow_extra=False)
