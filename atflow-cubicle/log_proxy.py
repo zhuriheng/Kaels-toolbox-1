@@ -135,7 +135,7 @@ def main():
         cmd = conf.get('params', 'cmd')
         st = conf.get('params', 'start_time')
         et = conf.get('params', 'end_time')
-        uid = [int(x) for x in conf.get('params', 'uid').split(',')]
+        uid = [int(x) for x in conf.get('params', 'uid').split(',')] if conf.get('params', 'uid') else list()
         q = conf.get('params', 'query')
         key = conf.get('params', 'key')
         bkt = conf.get('params', 'bucket')
