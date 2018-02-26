@@ -34,11 +34,12 @@ logger = logging.getLogger()
 def _init_():
     '''
     Evalutaion script for image-classification task
-    Update: 2017/12/05
+    Update: 2018/02/08
     Author: @Northrend
     Contributor:
 
     Change log:
+    2018/02/08      v2.0            support save error log
     2017/12/05      v1.5            support evaluation on all labels
     2017/08/15      v1.4            support confusion matrix
     2017/07/30      v1.3            support mxnet log
@@ -49,7 +50,7 @@ def _init_():
 
     Usage:
         classification_evaluator.py     <in-log> <out-path> (--gt=str)
-                                        [-s|--service -c|--conf-mat -a|--all-labels]
+                                        [-s|--service -c|--conf-mat -a|--all-labels -e|--err-log]
                                         [--log-lv=str --pos=int --label=str --nrop]
                                         [--top-k=int --label-range=int]
         classification_evaluator.py     -v | --version
@@ -65,6 +66,7 @@ def _init_():
         -s --service                online-service log mode
         -c --conf-mat               generate confusion matrix mode
         -a --all-labels             recurrently eval on all labels mode
+        -e --err-log                save error image json as /out-path/err.json
         ---------------------------------------------------------------------------------------------------
         --log-lv=str                logging level, one of INFO DEBUG WARNING ERROR CRITICAL [default: INFO]
         --gt=str                    groundtruth file list, required argument
@@ -245,11 +247,12 @@ def _calculate_pr_curve(dict_log, dict_gt):
     return lst_precision, lst_recall, lst_f1, lst_threshold, AP
 
 
-def _calculate_accuracy(dict_log, dict_gt):
+def _calculate_accuracy(dict_log, dict_gt, err_log=None):
     '''
     calculate top-1 error
     '''
     total, tptn, tp, fp, fn, miss = 0, 0, 0, 0, 0, 0
+    err_dic = dict()
     for image in dict_log.keys():
         total += 1
 
@@ -273,14 +276,23 @@ def _calculate_accuracy(dict_log, dict_gt):
                 tp += 1
         elif image_label != dict_gt[image] and image_label == POSITIVE:
             fp += 1
+            # record error images
+            err_dic[image] = dict_log[image].copy()
+            err_dic[image]['Ground-truth Label'] = dict_gt[image]
         elif image_label != dict_gt[image] and dict_gt[image] == POSITIVE:
             fn += 1
+            # record error images
+            err_dic[image] = dict_log[image].copy()
+            err_dic[image]['Ground-truth Label'] = dict_gt[image]
 
     logger.info('files: ' + str(len(dict_log.keys())))
     top_1_error = 1 - float(tptn) / total
     precision = float(tp) / (tp + fp)
     recall = float(tp) / (tp + fn)
     logger.info('missing files: ' + str(miss))
+    if err_log:
+        with open(err_log,'w') as f:
+            json.dump(err_dic,f,indent=4)
     return top_1_error, precision, recall
 
 
@@ -327,6 +339,7 @@ def main():
     dict_gt = _read_list(args['--gt'])      # read groundtruth
     file_log = open(args['<in-log>'], 'r')
     dict_log = json.load(file_log)
+    err_log = os.path.join(args['<out-path>'], 'err_img.log') if args['--err-log'] else None
     if args['--pos']:
         file_result = open(os.path.join(args['<out-path>'], str(POSITIVE), RESULT_FILE), 'w')
         POSITIVE = int(args['--pos'])
@@ -344,12 +357,12 @@ def main():
             file_result = open(os.path.join(args['<out-path>'], str(POSITIVE), RESULT_FILE), 'w')
             lst_precision, lst_recall, lst_f1, lst_threshold, AP = _calculate_pr_curve(dict_log, dict_gt)
             _generate_model_evaluation_result(file_result, lst_precision, lst_recall,
-                                              lst_f1, lst_threshold, _calculate_accuracy(dict_log, dict_gt), AP)
+                                              lst_f1, lst_threshold, _calculate_accuracy(dict_log, dict_gt, err_log), AP)
             file_result.close()
     else:
         lst_precision, lst_recall, lst_f1, lst_threshold, AP = _calculate_pr_curve(dict_log, dict_gt)
         _generate_model_evaluation_result(file_result, lst_precision, lst_recall,
-                                          lst_f1, lst_threshold, _calculate_accuracy(dict_log, dict_gt), AP)
+                                          lst_f1, lst_threshold, _calculate_accuracy(dict_log, dict_gt, err_log), AP)
         file_result.close()
     file_log.close()
 
