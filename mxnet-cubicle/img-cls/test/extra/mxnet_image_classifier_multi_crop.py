@@ -152,7 +152,6 @@ def multi_crop(img, crop_width, crop_number=3):
             return [left_crop, cent_crop, right_crop]
         elif crop_number == 5:
             stride = int((float(width)-float(crop_width))/4)
-            print(stride)
             left_crop_2 = img[:, :, stride:(stride + crop_width)]
             right_crop_2 = img[:, :, (-crop_width - stride):-stride]
             return [left_crop, left_crop_2, cent_crop, right_crop_2, right_crop]
@@ -268,7 +267,7 @@ def net_single_infer(model, list_image_path):
     # model.forward(Batch([mx.nd.array(img)]))
     model.forward(Batch([img_batch]))
     output_prob_batch = model.get_outputs()[0].asnumpy()
-    print(output_prob_batch)
+    # print(output_prob_batch)
 
     # ---- debugging ----
     # conv_w = model.get_params()[0]['conv0_weight']
@@ -359,7 +358,7 @@ def main():
     '''
     image classification job for list of images
     '''
-    _check_args()
+    _check_args(args)
     image_list = _read_list(args['<in-list>'])
     model = net_init()
     result = net_list_infer(model, image_list)

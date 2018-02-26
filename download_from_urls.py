@@ -26,10 +26,11 @@ def _init_():
     Multi-threading downloader script
 
     Change log:
+    2018/02/26      v1.1        support save as original basename
     2017/11/23      v1.0        basic functions
 
     Usage:
-        download_from_urls.py           <infile> <thread-number> 
+        download_from_urls.py           <infile> <thread-number> [-b|--basename] 
                                         [--f2u=str --u2f=str --date=str --start-index=int]
                                         [--download-path=str --prefix=str --suffix=str --ext=str]
         download_from_urls.py           -v|--version
@@ -42,6 +43,7 @@ def _init_():
     Options:
         -h --help                       show this screen
         -v --version                    show script version
+        -b --basename                   set to save as original basename
         ------------------------------------------------------------------------------------------
         --f2u=str                       path to save filename to url mapping file
         --u2f=str                       path to save url to filename mapping file
@@ -64,12 +66,13 @@ class prod_worker(threading.Thread):
     """
     global GLOBAL_LOCK
 
-    def __init__(self, queue, infile, f2u, u2f):
+    def __init__(self, queue, infile, f2u, u2f, use_basename=False):
         threading.Thread.__init__(self)
         self.queue = queue
         self.infile = infile
         self.f2u = f2u
         self.u2f = u2f
+        self.use_basename = use_basename
 
     def run(self):
         i = int(args['--start-index'])
@@ -79,8 +82,12 @@ class prod_worker(threading.Thread):
             if not buff.strip():
                 continue
             temp['url'] = buff.strip().split()[0]
-            temp['filename'] = os.path.join(
-                args['--download-path'], FILE_NAME.format(args['--date'], i))
+            if self.use_basename:
+                temp['filename'] = os.path.join(
+                    args['--download-path'], os.path.basename(temp['url']))
+            else:
+                temp['filename'] = os.path.join(
+                    args['--download-path'], FILE_NAME.format(args['--date'], i))
             self.f2u[os.path.basename(temp['filename'])] = temp['url']
             self.u2f[temp['url']] = os.path.basename(temp['filename'])
             GLOBAL_LOCK.acquire()
@@ -150,7 +157,7 @@ def main():
     filename_init()
     thread_count = int(args['<thread-number>'])
     queue = Queue.Queue(0)
-    thread_prod = prod_worker(queue, infile, f2u, u2f)
+    thread_prod = prod_worker(queue, infile, f2u, u2f, args['--basename'])
     thread_prod.start()
     print('thread:', thread_prod.name, 'successfully started')
     time.sleep(1)
