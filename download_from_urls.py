@@ -26,12 +26,13 @@ def _init_():
     Multi-threading downloader script
 
     Change log:
+    2018/02/27      v1.2        update saving mapping-file feature
     2018/02/26      v1.1        support save as original basename
     2017/11/23      v1.0        basic functions
 
     Usage:
         download_from_urls.py           <infile> <thread-number> [-b|--basename] 
-                                        [--f2u=str --u2f=str --date=str --start-index=int]
+                                        [--mapfile-path=str --date=str --start-index=int]
                                         [--download-path=str --prefix=str --suffix=str --ext=str]
         download_from_urls.py           -v|--version
         download_from_urls.py           -h|--help
@@ -45,11 +46,10 @@ def _init_():
         -v --version                    show script version
         -b --basename                   set to save as original basename
         ------------------------------------------------------------------------------------------
-        --f2u=str                       path to save filename to url mapping file
-        --u2f=str                       path to save url to filename mapping file
         --date=str                      date mark in filename [default: 1123]
         --start-index=int               start index in filename [default: 0]
         --download-path=str             path to save result file [default: ./]
+        --mapfile-path=str              path to save mapping files
         --prefix=str                    prefix of filename
         --suffix=str                    suffix of fileanme, supposed to be begin with '_' 
         --ext=str                       extension of filename [default: jpg]
@@ -141,13 +141,13 @@ class cons_worker(threading.Thread):
 def filename_init():
     """
     initialize file name template
-    
     """
     global FILE_NAME
-    args['--prefix'] = "" if not args['--prefix'] else args['--prefix']
     args['--suffix'] = "" if not args['--suffix'] else args['--suffix']
     FILE_NAME = args['--prefix'] + '_{}_{:0>8}' + \
         args['--suffix'] + '.' + args['--ext']
+    if not args['--basename']:
+        print('files will be saved as:', FILE_NAME.format(args['--date'], 0))
 
 
 def main():
@@ -169,11 +169,13 @@ def main():
         eval('thread_cons_{}.join()'.format(i))
     print('total error number:', ERROR_NUMBER)
     infile.close()
-    if args['--f2u'] and args['--u2f']:
-        with open(args['--f2u'], 'w') as f:
+    if args['--mapfile-path']:
+        with open(os.path.join(args['--mapfile-path'],'f2u.json'), 'w') as f:
             json.dump(f2u, f, indent=4)
-        with open(args['--u2f'], 'w') as u:
+        with open(os.path.join(args['--mapfile-path'],'u2f.json'), 'w') as u:
             json.dump(u2f, u, indent=4)
+    else:
+        pass
 
 
 if __name__ == '__main__':
