@@ -29,8 +29,8 @@ config.FIXED_PARAMS = ['conv1', 'conv2']
 config.FIXED_PARAMS_SHARED = ['conv1', 'conv2', 'conv3', 'conv4', 'conv5']
 
 # dataset related params
-config.NUM_CLASSES = 21
-config.SCALES = [(600, 1000)]  # first is scale (the shorter side); second is max size
+config.NUM_CLASSES = 31
+config.SCALES = [(400, 1500), (600, 1500), (800, 1500), (1000, 1500), (1200, 1500)]	# first is scale (the shorter side); second is max size
 config.ANCHOR_SCALES = (8, 16, 32)
 config.ANCHOR_RATIOS = (0.5, 1, 2)
 config.NUM_ANCHORS = len(config.ANCHOR_SCALES) * len(config.ANCHOR_RATIOS)
@@ -112,7 +112,7 @@ default = edict()
 default.network = 'vgg'
 default.pretrained = 'model/vgg16'
 default.pretrained_epoch = 0
-default.base_lr = 0.001
+default.base_lr = 0.0005
 # default dataset
 default.dataset = 'PascalVOC'
 default.image_set = '2007_trainval'
@@ -120,11 +120,11 @@ default.test_image_set = '2007_test'
 default.root_path = 'data'
 default.dataset_path = 'data/VOCdevkit'
 # default training
-default.frequent = 20
+default.frequent = 80
 default.kvstore = 'device'
 # default e2e
 default.e2e_prefix = 'model/e2e'
-default.e2e_epoch = 10
+default.e2e_epoch = 100
 default.e2e_lr = default.base_lr
 default.e2e_lr_step = '7'
 # default rpn
@@ -165,6 +165,14 @@ dataset.coco.test_image_set = 'val2014'
 dataset.coco.root_path = 'data'
 dataset.coco.dataset_path = 'data/coco'
 dataset.coco.NUM_CLASSES = 81
+
+dataset.Blued = edict()
+dataset.Blued.dataset = 'Blued'
+dataset.Blued.image_set = 'train'
+dataset.Blued.test_image_set = 'val'
+dataset.Blued.root_path = '/workspace/blued/rcnn-cache/'
+dataset.Blued.dataset_path = '/workspace/dataset/blued/'
+dataset.Blued.NUM_CLASSES = 31
 
 
 def generate_config(_network, _dataset):

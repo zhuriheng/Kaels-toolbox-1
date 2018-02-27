@@ -331,7 +331,7 @@ class Blued(IMDB):
         """
         from prettytable import PrettyTable
         table = PrettyTable(['Class Index','Class Name','AP(%)','IoU','Max-Rec(%)'])
-        ovthresh = 0.3
+        ovthresh = 0.5
         
         # annopath = os.path.join(self.data_path, 'Annotations', '{0!s}.json')
         annopath = os.path.join(self.data_path, 'Annotations','annotation-{}.json'.format(self.update))

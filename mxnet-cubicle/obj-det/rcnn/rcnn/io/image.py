@@ -42,9 +42,11 @@ def get_image(roidb):
         if roidb[i]['flipped']:
             im = im[:, ::-1, :]
         new_rec = roi_rec.copy()
-        scale_ind = random.randrange(len(config.SCALES))
-        target_size = config.SCALES[scale_ind][0]
-        max_size = config.SCALES[scale_ind][1]
+        # # randomly choose a scale
+        # scale_ind = random.randrange(len(config.SCALES))
+        # target_size = config.SCALES[scale_ind][0]
+        # max_size = config.SCALES[scale_ind][1]
+        target_size, max_size = 800,1500
         im, im_scale = resize(im, target_size, max_size, stride=config.IMAGE_STRIDE)
         im_tensor = transform(im, config.PIXEL_MEANS)
         processed_ims.append(im_tensor)

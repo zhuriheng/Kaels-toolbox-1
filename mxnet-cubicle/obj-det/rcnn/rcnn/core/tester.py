@@ -217,7 +217,7 @@ def pred_eval(predictor, test_data, imdb, vis=False, thresh=1e-3):
     with open(det_file, 'wb') as f:
         pickle.dump(all_boxes, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-    imdb.evaluate_detections(all_boxes)
+    imdb.evaluate_detections(all_boxes,imdb.fixed_image_set_index)
 
 
 def vis_all_detection(im_array, detections, class_names, scale):
