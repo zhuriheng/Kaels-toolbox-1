@@ -17,11 +17,12 @@ import docopt
 def _init_():
     '''
     Script for converting labelX-standard jsonlist to groundtruth file
-    Update: 2017/12/13
+    Update: 2018/02/08
     Author: @Northrend
     Contributor: 
 
     Change log:
+    2018/02/08  v1.2          fix json syntax bug
     2017/12/13  v1.1          support detection
     2017/12/07  v1.0          basic functions
 
@@ -74,19 +75,22 @@ def main():
     input_file = open(args['<in-list>'], 'r')
     output_file = open(args['<out-file>'], 'w')
     json_lst = input_file.readlines()
+    err_num = 0
     if args['--classification']:
         assert args['--label'], 'index-classname mapping file is required.'
         assert args['--sub-task'], 'sub-task should be provided in classification.'
         category = get_category(args['--label'])
         for item in json_lst:
-            temp_dict = json.loads(item.strip())
-            img = os.path.basename(temp_dict['url'])
             try:
+                temp_dict = json.loads(item.strip())
+                img = os.path.basename(temp_dict['url'])
                 label = category.index(temp_dict['label']['class'][args['--sub-task']])
             except:
-                print('syntax error:',item)
+                print('syntax error:',item.strip())
+                err_num += 1
                 continue
             output_file.write('{} {}\n'.format(img, label))
+        print('err_num:', err_num)
     elif args['--detection']:
         dict_ann = dict()
         for item in json_lst:
@@ -105,8 +109,10 @@ def main():
                     dict_ann[img].append(ins_ann)
             except:
                 print('syntax error or no object:',item.strip())
+                err_num += 1
                 continue
         json.dump(dict_ann, output_file, indent=4)
+        print('err_num:', err_num)
     output_file.close()
     input_file.close()
 

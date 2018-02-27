@@ -16,14 +16,14 @@ import sys
 import random
 
 
-def mklst(input, output):
+def mklst(input, output, basename=False):
     lst = []
     file_in = open(input,'r')
     file_lst = open(output, 'w')
     i = 0
     for buff in file_in:
-        if buff[0] == '/':
-            lst.append((buff.split()[0][1:], int(buff.split()[1])))
+        if basename: 
+            lst.append(os.path.basename(buff.split()[0]), int(buff.split()[1]))
             i += 1
         else:
             lst.append((buff.split()[0], int(buff.split()[1])))

@@ -67,11 +67,13 @@ def generate_dict(filename, prefix, classification=False, detection=False, clust
     temp['source_url'] = temp['url']
     temp['type'] = 'image'
     temp['label'] = dict()
+    pulp_label = ['pulp', 'sexy', 'normal']
     if classification:
         temp['label']['class'] = dict()
         if pre_ann:
             # ---- modify pre-annotated label here ----
-            temp['label']['class'][sub_task] = pre_ann[filename]
+            # temp['label']['class'][sub_task] = pre_ann[filename]
+            temp['label']['class'][sub_task] = pulp_label[pre_ann[filename]['Ground-truth Label']]
             # -----------------------------------------
         elif pre_label:
             temp['label']['class'][sub_task] = pre_label
@@ -106,7 +108,7 @@ def main():
     with open(args['<out-list>'], 'w') as f:
         for image in file_lst:
             temp_dict = generate_dict(image, args['--prefix'], args['--classification'],
-                                      args['--detection'], args['--clustering'], sub_task, pre_ann)
+                                      args['--detection'], args['--clustering'], sub_task, pre_ann, pre_label)
             f.write('{}\n'.format(json.dumps(temp_dict)))
 
 
