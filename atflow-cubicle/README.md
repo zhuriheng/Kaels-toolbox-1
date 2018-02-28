@@ -1,6 +1,6 @@
 ## log_proxy
 
-调用 atflow 的日志服务获取对应日志，目前支持`linux`，`osx`。
+调用 atflow 的日志服务获取对应日志，目前支持`Linux`，`macOS`。
 
 ## Requirements
 
