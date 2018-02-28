@@ -17,6 +17,7 @@ from logging import config
 import docopt
 import mxnet as mx
 from importlib import import_module
+from operator_py import svm_metric 
 
 # init global logger
 log_format = '%(asctime)s %(levelname)s: %(message)s'
@@ -31,11 +32,12 @@ fhandler = None     # log to file
 def _init_():
     '''
     Training script for image-classification task on mxnet
-    Update: 2018/02/11
+    Update: 2018/02/28
     Author: @Northrend
     Contributor:
 
     Changelog:
+    2018/02/28  v3.1        support svm classifier 
     2018/02/11  v3.0        support customized finetune layer name
     2018/02/10  v2.9        support resize dev data separately
     2018/02/03  v2.8        support random resize scale
@@ -66,7 +68,8 @@ def _init_():
                             [--resize=lst --resize-scale=lst --data-type=str --finetune-layer=str]
                             [--batch-size=int --optimizer=str --lr=flt --lr-factor=flt --momentum=flt]
                             [--weight-decay=flt --lr-step-epochs=lst --disp-batches=int --disp-lr]
-                            [--top-k=int --metrics=lst --dropout=flt --num-groups=int --mean=lst --std=lst]
+                            [--top-k=int --metrics=lst --dropout=flt --num-groups=int --use-svm]
+                            [--mean=lst --std=lst]
         mxnet_train.py      -v | --version
         mxnet_train.py      -h | --help
 
@@ -116,6 +119,7 @@ def _init_():
         --mean=lst                  list of rgb mean value [default: 123.68,116.779,103.939]
         --std=lst                   list of rgb std value [default: 58.395,57.12,57.375]
         --metrics=lst               metric of logging, set list of metrics to log several metrics [default: accuracy]
+        --use-svm                   whether to use svm as classifier in finetune model
     '''
     # config logger
     # logging.basicConfig(filename=args['<log>'],level=eval('logging.{}'.format(args['--log-lv'])), format=log_format)
@@ -192,12 +196,13 @@ def _get_iterators(data_train, data_dev, batch_size, data_shape=(3, 224, 224), r
     [max_random_scale, min_random_scale] = [float(x) for x in args['--resize-scale'].split(',')]
     logger.info('Input normalization params: mean_rgb {}, std_rgb {}'.format([mean_r, mean_g, mean_b],[std_r, std_g, std_b]))
     [resize_train, resize_dev] = resize
+    label_name = 'softmax_label' if not args['--use-svm'] else 'svm_label'
     train = mx.io.ImageRecordIter(
         dtype=dtype,
         path_imgrec=data_train,
 	# preprocess_threads=32,
         data_name='data',
-        label_name='softmax_label',
+        label_name=label_name,
         batch_size=batch_size,
         data_shape=data_shape,
         resize=resize_train,
@@ -218,7 +223,7 @@ def _get_iterators(data_train, data_dev, batch_size, data_shape=(3, 224, 224), r
         path_imgrec=data_dev,
 	# preprocess_threads=32,
         data_name='data',
-        label_name='softmax_label',
+        label_name=label_name,
         batch_size=batch_size,
         data_shape=data_shape,
         resize=resize_dev,
@@ -241,7 +246,7 @@ def _get_eval_metrics(lst_metrics):
     return multiple evaluation metrics
     '''
     all_metrics = ['accuracy', 'ce', 'f1',
-                   'mae', 'mse', 'rmse', 'top_k_accuracy']
+                   'mae', 'mse', 'rmse', 'top_k_accuracy', 'hinge_loss']
     lst_child_metrics = []
     eval_metrics = mx.metric.CompositeEvalMetric()
     for metric in lst_metrics:
@@ -262,6 +267,8 @@ def _get_eval_metrics(lst_metrics):
         elif metric == 'top_k_accuracy':
             lst_child_metrics.append(
                 mx.metric.TopKAccuracy(top_k=int(args['--top-k'])))
+        elif metric == 'hinge_loss':
+            lst_child_metrics.append(svm_metric.HingeLoss())
     for child_metric in lst_child_metrics:
         eval_metrics.add(child_metric)
     return eval_metrics
@@ -302,7 +309,7 @@ def _get_batch_end_callback(batch_size, display_batch=40):
     return cbs
 
 
-def _get_fine_tune_model(symbol, arg_params, num_classes, layer_name='flatten0'):
+def _get_fine_tune_model(symbol, arg_params, num_classes, layer_name='flatten0', use_svm=False):
     '''
     define the function which replaces the the last fully-connected layer for a given network
     symbol: the pre-trained network symbol
@@ -314,7 +321,10 @@ def _get_fine_tune_model(symbol, arg_params, num_classes, layer_name='flatten0')
     net = all_layers[layer_name + '_output']
     net = mx.symbol.FullyConnected(
         data=net, num_hidden=num_classes, name='fc-' + str(num_classes))
-    net = mx.symbol.SoftmaxOutput(data=net, name='softmax')
+    if use_svm:
+        net = mx.symbol.SVMOutput(data=net, name='svm')
+    else:
+        net = mx.symbol.SoftmaxOutput(data=net, name='softmax')
     new_args = dict({k: arg_params[k] for k in arg_params if 'fc1' not in k})
     if args['--save-json']:
         net.save('./finetuned-symbol.json')
@@ -348,8 +358,10 @@ def _whatever_the_fucking_fit_is(symbol, arg_params, aux_params, train, val, bat
         'momentum': float(args['--momentum']),
         'wd': float(args['--weight-decay']),
         'lr_scheduler': lr_scheduler}
-
-    mod = mx.mod.Module(symbol=symbol, context=devices)
+    
+     
+    label_names = ['softmax_label'] if not args['--use-svm'] else ['svm_label']
+    mod = mx.mod.Module(symbol=symbol, context=devices, label_names=label_names)
     mod.bind(data_shapes=train.provide_data, label_shapes=train.provide_label)
     # initialize weights
     if args['--network'] == 'alexnet':
@@ -418,11 +430,12 @@ def main():
     if args['--finetune']:
         # load pre-trained model
         layer_name = args['--finetune-layer'] if args['--finetune-layer'] else 'flatten0'
+        use_svm = args['--use-svm']
         sym, arg_params, aux_params = mx.model.load_checkpoint(
             args['--pretrained-model'], int(args['--load-epoch']))
         logger.info('pre-trained model loaded successfully, start finetune job...')
         # adapt original network to finetune network
-        (new_sym, new_args) = _get_fine_tune_model(sym, arg_params, num_classes, layer_name=layer_name)
+        (new_sym, new_args) = _get_fine_tune_model(sym, arg_params, num_classes, layer_name=layer_name, use_svm=use_svm)
     elif args['--resume']:
         # load model
         new_sym, new_args, aux_params = mx.model.load_checkpoint(
