@@ -26,6 +26,7 @@ def _init_():
     Multi-threading downloader script
 
     Change log:
+    2018/03/05      v1.3        fix bug
     2018/02/27      v1.2        update saving mapping-file feature
     2018/02/26      v1.1        support save as original basename
     2017/11/23      v1.0        basic functions
@@ -143,6 +144,7 @@ def filename_init():
     initialize file name template
     """
     global FILE_NAME
+    args['--prefix'] = "" if not args['--prefix'] else args['--prefix']
     args['--suffix'] = "" if not args['--suffix'] else args['--suffix']
     FILE_NAME = args['--prefix'] + '_{}_{:0>8}' + \
         args['--suffix'] + '.' + args['--ext']
