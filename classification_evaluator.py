@@ -50,7 +50,7 @@ def _init_():
 
     Usage:
         classification_evaluator.py     <in-log> <out-path> (--gt=str)
-                                        [-s|--service -c|--conf-mat -a|--all-labels -e|--err-log]
+                                        [-s|--service] [-c|--conf-mat] [-a|--all-labels] [-e|--err-log]
                                         [--log-lv=str --pos=int --label=str --nrop]
                                         [--top-k=int --label-range=int]
         classification_evaluator.py     -v | --version

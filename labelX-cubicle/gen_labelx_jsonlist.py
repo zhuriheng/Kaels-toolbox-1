@@ -61,6 +61,9 @@ class input_syntax_err(Exception):
     pass
 
 
+
+
+
 def generate_dict(filename, prefix, classification=False, detection=False, clustering=False, sub_task=None, pre_ann=None, pre_label=None):
     temp = dict()
     temp['url'] = prefix + filename if prefix else filename
@@ -105,6 +108,7 @@ def main():
             if len(buff.strip().split()) != 1:      # input syntax error
                 raise input_syntax_err
             file_lst.append(buff.strip())
+            
     with open(args['<out-list>'], 'w') as f:
         for image in file_lst:
             temp_dict = generate_dict(image, args['--prefix'], args['--classification'],
