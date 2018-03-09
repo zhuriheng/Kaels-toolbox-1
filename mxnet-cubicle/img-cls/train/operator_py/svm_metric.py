@@ -32,7 +32,7 @@ class HingeLoss(mx.metric.EvalMetric):
         By default include all labels.
     --------
     """
-    def __init__(self, name='hinge_loss', use_linear=False, margin=1.0,
+    def __init__(self, name='hinge-loss', use_linear=False, margin=1.0,
                  output_names=None, label_names=None):
         super(HingeLoss, self).__init__(
             name, output_names=output_names, label_names=label_names)

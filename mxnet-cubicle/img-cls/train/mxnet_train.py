@@ -68,8 +68,8 @@ def _init_():
                             [--resize=lst --resize-scale=lst --data-type=str --finetune-layer=str]
                             [--batch-size=int --optimizer=str --lr=flt --lr-factor=flt --momentum=flt]
                             [--weight-decay=flt --lr-step-epochs=lst --disp-batches=int --disp-lr]
-                            [--top-k=int --metrics=lst --dropout=flt --num-groups=int --use-svm]
-                            [--mean=lst --std=lst]
+                            [--top-k=int --metrics=lst --dropout=flt --num-groups=int --use-svm=str]
+                            [--mean=lst --std=lst --ref-coeff=flt]
         mxnet_train.py      -v | --version
         mxnet_train.py      -h | --help
 
@@ -119,7 +119,8 @@ def _init_():
         --mean=lst                  list of rgb mean value [default: 123.68,116.779,103.939]
         --std=lst                   list of rgb std value [default: 58.395,57.12,57.375]
         --metrics=lst               metric of logging, set list of metrics to log several metrics [default: accuracy]
-        --use-svm                   whether to use svm as classifier in finetune model
+        --use-svm=str               use svm as classifier in finetune model, should be choosen from l1 and l2
+        --ref-coeff=flt             regularization parameter for the svm [default: 1]
     '''
     # config logger
     # logging.basicConfig(filename=args['<log>'],level=eval('logging.{}'.format(args['--log-lv'])), format=log_format)
@@ -309,7 +310,7 @@ def _get_batch_end_callback(batch_size, display_batch=40):
     return cbs
 
 
-def _get_fine_tune_model(symbol, arg_params, num_classes, layer_name='flatten0', use_svm=False):
+def _get_fine_tune_model(symbol, arg_params, num_classes, layer_name='flatten0', use_svm=None):
     '''
     define the function which replaces the the last fully-connected layer for a given network
     symbol: the pre-trained network symbol
@@ -322,7 +323,8 @@ def _get_fine_tune_model(symbol, arg_params, num_classes, layer_name='flatten0',
     net = mx.symbol.FullyConnected(
         data=net, num_hidden=num_classes, name='fc-' + str(num_classes))
     if use_svm:
-        net = mx.symbol.SVMOutput(data=net, name='svm')
+        regularization_coefficient = float(args['--ref-coeff'])
+	net = mx.symbol.SVMOutput(data=net, name='svm', regularization_coefficient=regularization_coefficient) if use_svm == 'l2' else mx.symbol.SVMOutput(data=net, name='svm', use_linear=1, regularization_coefficient=regularization_coefficient)
     else:
         net = mx.symbol.SoftmaxOutput(data=net, name='softmax')
     new_args = dict({k: arg_params[k] for k in arg_params if 'fc1' not in k})
@@ -430,6 +432,7 @@ def main():
     if args['--finetune']:
         # load pre-trained model
         layer_name = args['--finetune-layer'] if args['--finetune-layer'] else 'flatten0'
+        assert args['--use-svm'] in ['l1','l2'], 'use-svm should be l1 or l2'
         use_svm = args['--use-svm']
         sym, arg_params, aux_params = mx.model.load_checkpoint(
             args['--pretrained-model'], int(args['--load-epoch']))
