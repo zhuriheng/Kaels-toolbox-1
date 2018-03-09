@@ -100,7 +100,7 @@ def residual_unit(data, num_filter, ratio, stride, dim_match, name, num_group, b
         eltwise = bn2 + shortcut
         return mx.sym.Activation(data=eltwise, act_type='relu', name=name + '_relu')
 		
-def resnext(units, num_stage, filter_list, ratio_list, num_class, num_group, data_type, drop_out, bottle_neck=True, bn_mom=0.9, workspace=256, memonger=False):
+def resnext(units, num_stage, filter_list, ratio_list, num_class, num_group, drop_out, bottle_neck=True, bn_mom=0.9, workspace=256, memonger=False):
     """Return ResNeXt symbol of
     Parameters
     ----------
@@ -125,6 +125,7 @@ def resnext(units, num_stage, filter_list, ratio_list, num_class, num_group, dat
     assert(num_unit == num_stage)
     data = mx.sym.Variable(name='data')
     data = mx.sym.BatchNorm(data=data, fix_gamma=True, eps=2e-5, momentum=bn_mom, name='bn_data')
+    data_type = 'imagenet'
     if data_type == 'cifar10':
         body = mx.sym.Convolution(data=data, num_filter=filter_list[0], kernel=(3, 3), stride=(1,1), pad=(1, 1),
                                   no_bias=True, name="conv0", workspace=workspace)
@@ -161,3 +162,58 @@ def resnext(units, num_stage, filter_list, ratio_list, num_class, num_group, dat
     fc1 = mx.symbol.FullyConnected(data=drop1, num_hidden=num_class, name='fc1')
     return mx.symbol.SoftmaxOutput(data=fc1, name='softmax')
     
+def get_symbol(num_classes, num_layers, image_shape, conv_workspace=256, **kwargs):
+    """
+    Adapted from https://github.com/tornadomeet/ResNet/blob/master/train_resnet.py
+    Original author Wei Wu
+    """
+    image_shape = [int(l) for l in image_shape.split(',')]
+    (nchannel, height, width) = image_shape
+    if height <= 28:
+        num_stages = 3
+        if (num_layers-2) % 9 == 0 and num_layers >= 164:
+            per_unit = [(num_layers-2)//9]
+            filter_list = [16, 64, 128, 256]
+            bottle_neck = True
+        elif (num_layers-2) % 6 == 0 and num_layers < 164:
+            per_unit = [(num_layers-2)//6]
+            filter_list = [16, 16, 32, 64]
+            bottle_neck = False
+        else:
+            raise ValueError("no experiments done on num_layers {}, you can do it yourself".format(num_layers))
+        units = per_unit * num_stages
+    else:
+        if num_layers >= 50:
+            filter_list = [64, 256, 512, 1024, 2048]
+            bottle_neck = True
+        else:
+            filter_list = [64, 64, 128, 256, 512]
+            bottle_neck = False
+        num_stages = 4
+        if num_layers == 18:
+            units = [2, 2, 2, 2]
+        elif num_layers == 34:
+            units = [3, 4, 6, 3]
+        elif num_layers == 50:
+            units = [3, 4, 6, 3]
+        elif num_layers == 101:
+            units = [3, 4, 23, 3]
+        elif num_layers == 152:
+            units = [3, 8, 36, 3]
+        elif num_layers == 200:
+            units = [3, 24, 36, 3]
+        elif num_layers == 269:
+            units = [3, 30, 48, 8]
+        else:
+            raise ValueError("no experiments done on num_layers {}, you can do it yourself".format(num_layers))
+
+    return resnext(units       = units,
+                   num_stage   = num_stages,
+                   filter_list = filter_list,
+                   ratio_list  = [0.25, 0.125, 0.0625, 0.03125],
+                   num_class   = num_classes,
+                   num_group   = int(kwargs['--num-groups']),
+                   # image_shape = image_shape,
+                   drop_out    = 0.0,
+                   bottle_neck = bottle_neck,
+                   workspace   = conv_workspace)
