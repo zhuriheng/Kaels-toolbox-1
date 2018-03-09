@@ -432,7 +432,8 @@ def main():
     if args['--finetune']:
         # load pre-trained model
         layer_name = args['--finetune-layer'] if args['--finetune-layer'] else 'flatten0'
-        assert args['--use-svm'] in ['l1','l2'], 'use-svm should be l1 or l2'
+        if args['--use-svm']:
+            assert args['--use-svm'] in ['l1','l2'], 'use-svm should be l1 or l2'
         use_svm = args['--use-svm']
         sym, arg_params, aux_params = mx.model.load_checkpoint(
             args['--pretrained-model'], int(args['--load-epoch']))
