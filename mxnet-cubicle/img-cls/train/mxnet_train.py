@@ -32,11 +32,12 @@ fhandler = None     # log to file
 def _init_():
     '''
     Training script for image-classification task on mxnet
-    Update: 2018/02/28
+    Update: 2018/03/12
     Author: @Northrend
     Contributor:
 
     Changelog:
+    2018/03/12  v3.2        support freeze feature layer weights 
     2018/02/28  v3.1        support svm classifier 
     2018/02/11  v3.0        support customized finetune layer name
     2018/02/10  v2.9        support resize dev data separately
@@ -69,7 +70,7 @@ def _init_():
                             [--batch-size=int --optimizer=str --lr=flt --lr-factor=flt --momentum=flt]
                             [--weight-decay=flt --lr-step-epochs=lst --disp-batches=int --disp-lr]
                             [--top-k=int --metrics=lst --dropout=flt --num-groups=int --use-svm=str]
-                            [--mean=lst --std=lst --ref-coeff=flt]
+                            [--mean=lst --std=lst --ref-coeff=flt --freeze-weights]
         mxnet_train.py      -v | --version
         mxnet_train.py      -h | --help
 
@@ -119,6 +120,7 @@ def _init_():
         --mean=lst                  list of rgb mean value [default: 123.68,116.779,103.939]
         --std=lst                   list of rgb std value [default: 58.395,57.12,57.375]
         --metrics=lst               metric of logging, set list of metrics to log several metrics [default: accuracy]
+        --freeze-weights            choose to freeze weights before classifier during training
         --use-svm=str               use svm as classifier in finetune model, should be choosen from l1 and l2
         --ref-coeff=flt             regularization parameter for the svm [default: 1]
     '''
@@ -160,6 +162,7 @@ def _get_lr_scheduler(args, kv, num_gpus):
                      (lr, begin_epoch))
     steps = [epoch_size * (x - begin_epoch)
              for x in step_epochs if x - begin_epoch > 0]
+    print(steps)
     return (lr, mx.lr_scheduler.MultiFactorScheduler(step=steps, factor=float(args['--lr-factor'])))
 
 
@@ -363,7 +366,12 @@ def _whatever_the_fucking_fit_is(symbol, arg_params, aux_params, train, val, bat
     
      
     label_names = ['softmax_label'] if not args['--use-svm'] else ['svm_label']
-    mod = mx.mod.Module(symbol=symbol, context=devices, label_names=label_names)
+    # freeze weights before classifier
+    if args['--freeze-weights']:
+        freeze_list = [k for k in arg_params if 'fc' not in k] # fix all weights except for fc layers
+        mod = mx.mod.Module(symbol=symbol, context=devices, label_names=label_names, fixed_param_names=freeze_list)
+    else:
+        mod = mx.mod.Module(symbol=symbol, context=devices, label_names=label_names)
     mod.bind(data_shapes=train.provide_data, label_shapes=train.provide_label)
     # initialize weights
     if args['--network'] == 'alexnet':
