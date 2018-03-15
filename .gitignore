@@ -2,3 +2,4 @@
 .DS_Store?
 */.DS_Store
 *.pyc
+mxnet-cubicle/obj-det/rcnn/rcnn/pycocotools/_mask.c
