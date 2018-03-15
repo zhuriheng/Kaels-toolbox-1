@@ -46,7 +46,7 @@ def get_image(roidb):
         # scale_ind = random.randrange(len(config.SCALES))
         # target_size = config.SCALES[scale_ind][0]
         # max_size = config.SCALES[scale_ind][1]
-        target_size, max_size = 800,1500
+        target_size, max_size = 800,1200
         im, im_scale = resize(im, target_size, max_size, stride=config.IMAGE_STRIDE)
         im_tensor = transform(im, config.PIXEL_MEANS)
         processed_ims.append(im_tensor)
