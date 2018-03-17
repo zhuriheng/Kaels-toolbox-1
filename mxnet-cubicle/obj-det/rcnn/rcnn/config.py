@@ -21,7 +21,8 @@ from easydict import EasyDict as edict
 config = edict()
 
 # network related params
-config.PIXEL_MEANS = np.array([103.939, 116.779, 123.68])
+# config.PIXEL_MEANS = np.array([103.939, 116.779, 123.68])
+config.PIXEL_MEANS = np.array([0,0,0])
 config.IMAGE_STRIDE = 0
 config.RPN_FEAT_STRIDE = 16
 config.RCNN_FEAT_STRIDE = 16

@@ -40,6 +40,7 @@ def get_net(symbol, prefix, epoch, ctx):
 
     # infer shape
     data_shape_dict = dict(DATA_SHAPES)
+    print('DATA_SHAPES:',DATA_SHAPES)
     arg_names, aux_names = symbol.list_arguments(), symbol.list_auxiliary_states()
     arg_shape, _, aux_shape = symbol.infer_shape(**data_shape_dict)
     arg_shape_dict = dict(zip(arg_names, arg_shape))
@@ -166,16 +167,21 @@ def parse_args():
 
 
 def main(args):
-    global CLASSES, SHORT_SIDE, LONG_SIDE
+    global CLASSES, DATA_SHAPES, SHORT_SIDE, LONG_SIDE
+    SHORT_SIDE, LONG_SIDE = args.shortside, args.longside
+    DATA_SHAPES = [('data', (1, 3, LONG_SIDE, SHORT_SIDE)), ('im_info', (1, 3))]
     # args = parse_args()
     ctx = mx.gpu(args.gpu)
     CLASSES = ['__background__']
     with open(args.labellist, 'r') as label_list:
         for label in label_list:
             CLASSES.append(label.strip())
+    SHORT_SIDE, LONG_SIDE = args.shortside, args.longside
+    DATA_SHAPES = [('data', (1, 3, LONG_SIDE, SHORT_SIDE)), ('im_info', (1, 3))]
     # print(CLASSES)
     # symbol = eval('rcnn.symbol.get_' + args.network + '_test')(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS)
     symbol = eval('rcnn.symbol.get_' + args.network + '_test')(num_classes=len(CLASSES), num_anchors=config.NUM_ANCHORS)
+    # symbol.save('demo.py.json')
     # symbol = rcnn.symbol.get_resnet_test(
     #     num_classes=len(CLASSES), num_anchors=config.NUM_ANCHORS)
     predictor = get_net(symbol, args.prefix, args.epoch, ctx)
@@ -190,7 +196,7 @@ def main(args):
     json.dump(result_dic,open('tmp.json','w'),indent=4)
 
 def test(args):
-    global CLASSES, SHORT_SIDE, LONG_SIDE, DATA_SHAPES
+    global CLASSES, DATA_SHAPES, SHORT_SIDE, LONG_SIDE
     # args = parse_args()
     ctx = mx.gpu(args.gpu)
     CLASSES = ['__background__']
