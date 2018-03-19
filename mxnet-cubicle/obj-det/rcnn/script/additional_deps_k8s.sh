@@ -21,6 +21,8 @@
 # install additional depts
 apt install python-pip python-dev unzip python-matplotlib
 pip install cython scikit-image easydict future prettytable
+apt-get update
+apt-get install bc
 
 # build cython extension
 make
