@@ -75,8 +75,8 @@ def generate_dict(filename, prefix, classification=False, detection=False, clust
         temp['label']['class'] = dict()
         if pre_ann:
             # ---- modify pre-annotated label here ----
-            # temp['label']['class'][sub_task] = pre_ann[filename]
-            temp['label']['class'][sub_task] = pulp_label[pre_ann[filename]['Ground-truth Label']]
+            temp['label']['class'][sub_task] = pre_ann[filename]
+            # temp['label']['class'][sub_task] = pulp_label[pre_ann[filename]['Ground-truth Label']]
             # -----------------------------------------
         elif pre_label:
             temp['label']['class'][sub_task] = pre_label

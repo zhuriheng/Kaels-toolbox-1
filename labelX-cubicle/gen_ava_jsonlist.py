@@ -81,7 +81,8 @@ def generate_dict(filename, prefix, classification=False, detection=False, clust
             pass
             # -----------------------------------------
         elif pre_label:
-            tmp['data'].append({'class': pulp_label[pre_label]})
+            # tmp['data'].append({'class': pulp_label[pre_label]})
+            tmp['data'].append({'class': pre_label})
         temp['label'].append(tmp)
     # if detection:
     #     temp['label']['detect'] = {'general_d': {}}
@@ -116,7 +117,7 @@ def main():
     with open(args['<out-list>'], 'w') as f:
         for image in file_lst:
             if len(image.strip().split()) == 2:
-                pre_label = int(image.strip().split()[1])
+                pre_label = image.strip().split()[1]
             temp_dict = generate_dict(image.split()[0], args['--prefix'], args['--classification'],
                                       args['--detection'], args['--clustering'], sub_task, pre_ann, pre_label)
             f.write('{}\n'.format(json.dumps(temp_dict)))

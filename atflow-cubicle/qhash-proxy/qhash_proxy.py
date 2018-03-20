@@ -29,10 +29,10 @@ def _init_():
     2018/03/01          v1.0            basic functions
 
     Usage:
-        download_from_urls.py           <infile> <thread-number>
+        qhash_proxy.py                  <infile> <thread-number>
                                         [--prefix=str --output=str --hash-alg=lst]
-        download_from_urls.py           -v|--version
-        download_from_urls.py           -h|--help
+        qhash_proxy.py                  -v|--version
+        qhash_proxy.py                  -h|--help
 
     Arguments:
         <infile>                        input file list
