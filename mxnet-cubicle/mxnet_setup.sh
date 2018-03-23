@@ -1,6 +1,6 @@
 # Setup MXNet with ubuntu os
 
-MXNET_VERSION="1.0.0"
+MXNET_VERSION="v1.1.0"
 echo 'mxnet version: $MXNET_VERSION'
 cd /opt/
 apt-get update
@@ -15,6 +15,7 @@ make -j $(nproc) USE_OPENCV=1 USE_BLAS=openblas USE_CUDA=1 USE_CUDA_PATH=/usr/lo
 echo 'start installing mxnet python binding' 
 cd python
 pip install --upgrade pip
+pip install --upgrade numpy
 pip install -e .
 echo '...done'
 cd ~
