@@ -121,7 +121,7 @@ def _index_to_classname(label_file, classname_position=1):
 
 def center_crop(img, crop_width):
     _, height, width = img.shape
-    assert (height >= crop_width and width >= crop_width), 'crop size should be larger than image size!'
+    assert (height >= crop_width and width >= crop_width), 'crop size should be smaller than image size!'
     top = int(float(height) / 2 - float(crop_width) / 2)
     left = int(float(width) / 2 - float(crop_width) / 2)
     crop = img[:, top:(top + crop_width), left:(left + crop_width)]
