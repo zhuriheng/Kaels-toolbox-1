@@ -16,6 +16,7 @@ import numpy as np
 import re
 import csv
 import docopt
+import time
 from collections import namedtuple
 from AvaLib import _time_it
 
@@ -28,6 +29,7 @@ def _init_():
     Contributor: 
 
     Change log:
+    2018/04/18  v2.5    support print foward fps
     2017/12/29  v2.4    fix numpy truth value err bug
     2017/12/11  v2.3    fix center crop bug
     2017/12/07  v2.2    convert img-data to float before resizing
@@ -39,7 +41,8 @@ def _init_():
     2017/06/20  v1.0    basic functions
 
     Usage:
-        mxnet_image_classifier.py       <in-list> <out-log> [-c|--confidence] [-t|--test] [--center-crop]
+        mxnet_image_classifier.py       <in-list> <out-log> [-c|--confidence] [-t|--test] 
+                                        [--center-crop] [--output-ffps]
                                         (--label=str --model-prefix=str --model-epoch=int)
                                         [--batch-size=int --img-width=int --data-prefix=str]
                                         [--top-k=int --label-position=int --gpu=int]
@@ -58,6 +61,7 @@ def _init_():
         -c --confidence             set to output confidence of each class
         -t --test                   single image test mode
         --center-crop               set to use center crop
+        --output-ffps               set to print foward frame per sec
         --gpu=int                   choose one gpu to run network [default: 0]
         --label=str                 text file which maps label index to concrete word
         --label-position=int        classname position in label file [default: 1]
@@ -76,8 +80,11 @@ def _init_():
         print('{:<20}= {}'.format(key.replace('--', ''), args[key]))
     print('=' * 80)
 
+# global vars
+FORWARD_TIME_TOTAL = 0
+FORWARD_COUNT = 0
 
-# golbal error file list
+# global error file list
 ERROR_LIST = list()
 
 
@@ -159,7 +166,7 @@ def net_single_infer(model, list_image_path):
     '''
     predict label of one single image.
     '''
-    global ERROR_LIST
+    global ERROR_LIST, FOWARD_TIME_TOTAL, FORWARD_COUNT
     Batch = namedtuple('Batch', ['data'])
     batch_size = int(args['--batch-size'])
     image_width = int(args['--img-width'])
@@ -206,7 +213,14 @@ def net_single_infer(model, list_image_path):
     # forward propagation
     # print(Batch([mx.nd.array(img)]))
     # model.forward(Batch([mx.nd.array(img)]))
-    model.forward(Batch([img_batch]))
+    if args['--output-ffps']:
+        tic = time.time()
+        model.forward(Batch([img_batch]))
+        toc = time.time()
+        FORWARD_TIME_TOTAL += toc-tic
+        FORWARD_COUNT += 1
+    else:
+        model.forward(Batch([img_batch]))
     output_prob_batch = model.get_outputs()[0].asnumpy()
 
     # ---- debugging ----
@@ -285,9 +299,11 @@ def main():
     '''
     image classification job for list of images
     '''
+    global FORWARD_TIME_TOTAL, FORWARD_COUNT
     image_list = _read_list(args['<in-list>'])
     model = net_init()
     result = net_list_infer(model, image_list)
+    print('FFPS:',float(FORWARD_TIME_TOTAL)/FORWARD_COUNT)
     log_result = open(args['<out-log>'], 'w')
     json.dump(result, log_result, indent=4)
     log_result.close()
