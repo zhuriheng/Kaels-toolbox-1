@@ -124,7 +124,13 @@ class cons_worker(threading.Thread):
                 else:
                     url_tmp = file_tmp
                 for hash_alg in self.hash_alg_list:
-                    result, err_num = self.get_qhash(url_tmp, hash_alg, err_num)
+                    try:
+                        result, err_num = self.get_qhash(url_tmp, hash_alg, err_num)
+                    except requests.exceptions.ConnectionError:
+                        GLOBAL_LOCK.acquire()
+                        self.queue.put(file_tmp)
+                        GLOBAL_LOCK.release()
+                        break
                     if result:
                         GLOBAL_LOCK.acquire()
                         self.hash_dic[file_tmp][hash_alg] = result['hash']
