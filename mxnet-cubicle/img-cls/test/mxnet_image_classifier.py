@@ -42,7 +42,7 @@ def _init_():
 
     Usage:
         mxnet_image_classifier.py       <in-list> <out-log> [-c|--confidence] [-t|--test] 
-                                        [--center-crop] [--output-ffps]
+                                        [--center-crop] [--output-fps]
                                         (--label=str --model-prefix=str --model-epoch=int)
                                         [--batch-size=int --img-width=int --data-prefix=str]
                                         [--top-k=int --label-position=int --gpu=int]
@@ -61,7 +61,7 @@ def _init_():
         -c --confidence             set to output confidence of each class
         -t --test                   single image test mode
         --center-crop               set to use center crop
-        --output-ffps               set to print foward frame per sec
+        --output-fps                set to print foward frame per sec
         --gpu=int                   choose one gpu to run network [default: 0]
         --label=str                 text file which maps label index to concrete word
         --label-position=int        classname position in label file [default: 1]
@@ -166,7 +166,7 @@ def net_single_infer(model, list_image_path):
     '''
     predict label of one single image.
     '''
-    global ERROR_LIST, FOWARD_TIME_TOTAL, FORWARD_COUNT
+    global ERROR_LIST, FORWARD_TIME_TOTAL, FORWARD_COUNT
     Batch = namedtuple('Batch', ['data'])
     batch_size = int(args['--batch-size'])
     image_width = int(args['--img-width'])
@@ -177,6 +177,7 @@ def net_single_infer(model, list_image_path):
     std_r, std_g, std_b = float(args['--std'].split(',')[0]), float(args['--std'].split(',')
                                                                     [1]), float(args['--std'].split(',')[2])
 
+    tic = time.time()
     img_batch = mx.nd.array(np.zeros((batch_size, 3, image_width, image_width)))
     for index, image_path in enumerate(list_image_path):
         # image preprocessing
@@ -206,22 +207,20 @@ def net_single_infer(model, list_image_path):
         if args['--center-crop']:
             img = center_crop(img, image_width)
         # img_batch[index] = mx.nd.array(img)[0]
-        img_batch[index] = mx.nd.array(img)
+        ## img_batch[index] = mx.nd.array(img)
     # print(mx.nd.array(img).shape)
     # print(img_batch.asnumpy())
 
-    # forward propagation
+    ## forward propagation
     # print(Batch([mx.nd.array(img)]))
     # model.forward(Batch([mx.nd.array(img)]))
-    if args['--output-ffps']:
-        tic = time.time()
-        model.forward(Batch([img_batch]))
-        toc = time.time()
-        FORWARD_TIME_TOTAL += toc-tic
-        FORWARD_COUNT += 1
-    else:
-        model.forward(Batch([img_batch]))
+    img_batch[index] = mx.nd.array(img)
+    model.forward(Batch([img_batch]))
     output_prob_batch = model.get_outputs()[0].asnumpy()
+    toc = time.time()
+    if args['--output-fps']:
+        FORWARD_TIME_TOTAL += (toc-tic)
+        FORWARD_COUNT += 1
 
     # ---- debugging ----
     # conv_w = model.get_params()[0]['conv0_weight']
@@ -303,7 +302,8 @@ def main():
     image_list = _read_list(args['<in-list>'])
     model = net_init()
     result = net_list_infer(model, image_list)
-    print('FFPS:',float(FORWARD_TIME_TOTAL)/FORWARD_COUNT)
+    # print('FORWARD_TIME_TOTAL, FORWARD_COUNT,',FORWARD_TIME_TOTAL,FORWARD_COUNT)
+    print('FPS:',float(FORWARD_TIME_TOTAL)/FORWARD_COUNT)
     log_result = open(args['<out-log>'], 'w')
     json.dump(result, log_result, indent=4)
     log_result.close()
