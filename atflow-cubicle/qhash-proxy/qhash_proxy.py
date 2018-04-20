@@ -24,8 +24,11 @@ FILE_NAME = str()
 def _init_():
     """
     Getting remote file hash with multi-thread
+    Update: 2018/04/20
+    Contributor: laojiangwei@github.com 
 
     Change log:
+    2018/04/20          v1.1            fix bug 
     2018/03/01          v1.0            basic functions
 
     Usage:
