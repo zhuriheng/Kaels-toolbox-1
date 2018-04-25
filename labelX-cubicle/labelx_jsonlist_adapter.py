@@ -84,7 +84,8 @@ def main():
             try:
                 temp_dict = json.loads(item.strip())
                 img = os.path.basename(temp_dict['url'])
-                label = category.index(temp_dict['label']['class'][args['--sub-task']])
+                # label = category.index(temp_dict['label']['class'][args['--sub-task']])
+                label = category.index(temp_dict['label'][0]['data'][0]['class'])
             except:
                 print('syntax error:',item.strip())
                 err_num += 1
