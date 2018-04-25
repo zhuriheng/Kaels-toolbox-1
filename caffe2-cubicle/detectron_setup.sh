@@ -21,7 +21,7 @@ python setup.py install --user
 
 # install detectron
 cd ${ROOT_PATH}
-git clone https://github.com/Northrend/Detectron.git --recursive
+git clone https://github.com/facebookresearch/Detectron.git --recursive
 cd Detectron/lib
 make
 cd ../
