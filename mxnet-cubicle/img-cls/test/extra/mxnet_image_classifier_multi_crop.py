@@ -221,7 +221,7 @@ def net_single_infer(model, list_image_path):
         img = cv2.cvtColor(img_read, cv2.COLOR_BGR2RGB)
         img = img.astype(float)
         # print(img.shape)
-        if args['--multi-crop']: 
+        if args['--multi-crop'] or args['--center-crop']: 
             height, width, _ = img.shape
             if height > width:
                 img = cv2.resize(img, (resize_width, int(float(height)*resize_width/width)))
