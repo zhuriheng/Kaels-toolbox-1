@@ -207,14 +207,13 @@ def net_single_infer(model, list_image_path):
         if args['--center-crop']:
             img = center_crop(img, image_width)
         # img_batch[index] = mx.nd.array(img)[0]
-        ## img_batch[index] = mx.nd.array(img)
+        img_batch[index] = mx.nd.array(img)
     # print(mx.nd.array(img).shape)
     # print(img_batch.asnumpy())
 
     ## forward propagation
     # print(Batch([mx.nd.array(img)]))
     # model.forward(Batch([mx.nd.array(img)]))
-    img_batch[index] = mx.nd.array(img)
     model.forward(Batch([img_batch]))
     output_prob_batch = model.get_outputs()[0].asnumpy()
     toc = time.time()
@@ -303,7 +302,8 @@ def main():
     model = net_init()
     result = net_list_infer(model, image_list)
     # print('FORWARD_TIME_TOTAL, FORWARD_COUNT,',FORWARD_TIME_TOTAL,FORWARD_COUNT)
-    print('FPS:',float(FORWARD_TIME_TOTAL)/FORWARD_COUNT)
+    if args['--output-fps']: 
+        print('FPS:',float(FORWARD_TIME_TOTAL)/FORWARD_COUNT)
     log_result = open(args['<out-log>'], 'w')
     json.dump(result, log_result, indent=4)
     log_result.close()
