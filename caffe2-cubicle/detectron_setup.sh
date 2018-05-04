@@ -28,3 +28,6 @@ cd Detectron/lib
 make
 cd ../
 python tests/test_spatial_narrow_as_op.py    # test installation
+git remote remove origin
+git remote add upstream git@github.com:facebookresearch/Detectron.git
+git remote add origin git@github.com:Northrend/Detectron.git
