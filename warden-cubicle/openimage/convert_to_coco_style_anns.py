@@ -1,0 +1,127 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from __future__ import print_function
+import sys
+import os
+import json
+import pprint
+
+sys.path.append('../lib')
+from openimage import load_categories
+from image import get_image_size_core,check_bounding_box
+
+
+def main():
+    '''
+    params: /path/to/input/csv, /path/to/output/files, /path/to/image/files, /path/to/category/file
+    '''
+    input_csv = sys.argv[1]
+    output_json = os.path.join(sys.argv[2],os.path.splitext(os.path.basename(input_csv))[0] + '.json') 
+    img_path = sys.argv[3]
+    cat_path = sys.argv[4]
+    raw = list()
+    err_lst = list()
+    out_of_size_lst = list()
+
+    # read anns
+    with open(input_csv,'r') as f:
+        for idx, buff in enumerate(f.readlines()[1:]):
+            tmp = dict()
+            tmp['ImageIndex'] = idx
+            tmp['ImageID'],tmp['Source'],tmp['LabelName'],tmp['Confidence'],tmp['XMin'],tmp['XMax'],tmp['YMin'],tmp['YMax'] = buff.strip().split(',')[:8]
+            # tmp['Width'], tmp['Height'] = 1024, 768
+            raw.append(tmp)
+    # pprint.pprint(raw[0])
+    
+    # read categories
+    cat = load_categories(cat_path)
+    # print(len(cat),cat[:10])
+
+    # result initialization
+    result = dict()
+    result['info'] = dict()
+    result['images'] = list()
+    result['annotations'] = list()
+    result['licenses'] = list()
+    result['categories'] = list()
+
+    result['info'] = {"year":"2018", "version":"v4", "description":"openimage v4 bounding-box annotations", "contributor":"Northrend@github.com","url":None, "date_created":"2018-05-04"}
+    
+    _ = dict() 
+    count = 0
+    resize = [1024, 768]
+    for item in raw:
+        # write images
+        tmp = dict()
+        tmp['id'] = item['ImageID']
+        # tmp['id'] = item['ImageIndex']
+        tmp['file_name'] = item['ImageID'] + '.jpg'
+        tmp_img_path = os.path.join(img_path, tmp['file_name'])
+        width, height = get_image_size_core(tmp_img_path) 
+        if width not in resize and height not in resize:
+            # print('warning: image size may be wrong, {}, w{}, h{}'.format(tmp['id'],width,height))
+            out_of_size_lst.append((item['ImageID'],width,height))
+        tmp['width'], tmp['height'] = width, height 
+        tmp['license'] = None
+        tmp['flickr_url'] = None
+        tmp['coco_url'] = None
+        tmp['date_captured'] = None
+        _[tmp['id']] = tmp
+    
+        # write annotations
+        tmp = dict()
+        tmp['id'] = count
+        tmp['image_id'] = item['ImageID']
+        # tmp['image_id'] = item['ImageIndex']
+        tmp['category_id'] = cat.index(item['LabelName'])
+        tmp['segmentation'] = list() 
+        # bbox = [x,y,w,h]
+        bbox = [float(item['XMin'])*width, float(item['YMin'])*height, (float(item['XMax'])-float(item['XMin']))*width, (float(item['YMax'])-float(item['YMin']))*height]
+        tmp['bbox'] = [float('{:.2f}'.format(x)) for x in bbox]
+        tmp['area'] = float('{:.2f}'.format(tmp['bbox'][2]*tmp['bbox'][3]))
+        check = check_bounding_box(tmp['bbox'], width, height, item['ImageID'])
+        if check:    # catch box
+            err_lst.append((item['ImageID'],width,height,tmp['id'],tmp['bbox']))
+        tmp['iscrowd'] = None
+        result['annotations'].append(tmp)
+        
+        count += 1
+        if count%(len(raw)/20) == 0:
+            print('processsing: {:.1f}%...'.format((100.0*count)/len(raw)))
+
+    for key in _:
+        result['images'].append(_[key])
+    
+    # write categories
+    for index,item in enumerate(cat):
+        tmp = dict()
+        tmp['id'] = index
+        tmp['name'] = item
+        tmp['supercategory'] = None
+        result['categories'].append(tmp)
+
+    # pprint.pprint(result) 
+    with open(output_json,'w') as f:
+        json.dump(result,f,indent=2)
+            
+    # write error lists
+    if err_lst:
+        err_file = os.path.join(sys.argv[2],os.path.splitext(os.path.basename(input_csv))[0] + '_invalid_boxes.csv') 
+        with open(err_file,'w') as f:
+            for item in err_lst:
+                f.write('{}\n'.format(json.dumps(item)))
+        print('invalid boxes wroten into {}'.format(err_file))
+
+    if out_of_size_lst:
+        out_file = os.path.join(sys.argv[2],os.path.splitext(os.path.basename(input_csv))[0] + '_out_of_size_images.csv') 
+        with open(out_file, 'w') as f:
+            for item in set(out_of_size_lst):
+                f.write('{}\n'.format(json.dumps(item)))
+        print('images out of size wroten into {}'.format(out_file))
+
+if __name__ == '__main__':
+    print('start converting...')
+    main()
+    print('...done')
+
