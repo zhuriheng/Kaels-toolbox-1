@@ -79,13 +79,14 @@ def get_image_size_core(img_path):
 
     return width, height
 
-def check_bounding_box(bbox,width,height,img_id):
+def check_bounding_box(bbox,width,height,img_id,digits=2):
     '''
     check whether bounding-box coordinates are valid
     bounding box format: xywh
+    default approximate digits: .2f
     '''
     x,y,w,h = bbox
-    if x<0 or y<0 or (x+w)>width or (y+h)>height:
+    if x<0 or y<0 or (x+w)>(width+pow(0.1,digits)) or (y+h)>(height+pow(0.1,digits)):
         # print('warning: encounterd invalid box {}, in image {}, w{}, h{}'.format(bbox, img_id, width, height))
         return 1
     else:

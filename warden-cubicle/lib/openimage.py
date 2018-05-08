@@ -21,3 +21,19 @@ def convert_img_id(item_lst):
         for i in xrange(len(item_lst)):
             item_lst[i]['id'] = i
     return item_lst
+
+
+def load_annotations(csv_path):
+    '''
+    load openimage official bounding-box annotations file
+    '''
+    raw = list()
+    with open(csv_path,'r') as f:
+        for idx, buff in enumerate(f.readlines()[1:]):
+            tmp = dict()
+            tmp['ImageIndex'] = idx
+            tmp['ImageID'],tmp['Source'],tmp['LabelName'],tmp['Confidence'],tmp['XMin'],tmp['XMax'],tmp['YMin'],tmp['YMax'] = buff.strip().split(',')[:8]
+            # tmp['Width'], tmp['Height'] = 1024, 768
+            raw.append(tmp)
+    print(len(raw),'bounding-boxes loaded.')
+    return raw

@@ -8,35 +8,26 @@ import json
 import pprint
 
 sys.path.append('../lib')
-from openimage import load_categories
+from openimage import load_categories,load_annotations
 from image import get_image_size_core,check_bounding_box
 
 
 def main():
     '''
-    params: /path/to/input/csv, /path/to/output/files, /path/to/image/files, /path/to/category/file
+    params: /path/to/input/csv /path/to/output/files /path/to/image/files /path/to/category/file
     '''
     input_csv = sys.argv[1]
     output_json = os.path.join(sys.argv[2],os.path.splitext(os.path.basename(input_csv))[0] + '.json') 
     img_path = sys.argv[3]
     cat_path = sys.argv[4]
-    raw = list()
     err_lst = list()
     out_of_size_lst = list()
 
     # read anns
-    with open(input_csv,'r') as f:
-        for idx, buff in enumerate(f.readlines()[1:]):
-            tmp = dict()
-            tmp['ImageIndex'] = idx
-            tmp['ImageID'],tmp['Source'],tmp['LabelName'],tmp['Confidence'],tmp['XMin'],tmp['XMax'],tmp['YMin'],tmp['YMax'] = buff.strip().split(',')[:8]
-            # tmp['Width'], tmp['Height'] = 1024, 768
-            raw.append(tmp)
-    # pprint.pprint(raw[0])
-    
+    raw = load_annotations(input_csv)
+
     # read categories
     cat = load_categories(cat_path)
-    # print(len(cat),cat[:10])
 
     # result initialization
     result = dict()
@@ -74,7 +65,7 @@ def main():
         tmp['id'] = count
         tmp['image_id'] = item['ImageID']
         # tmp['image_id'] = item['ImageIndex']
-        tmp['category_id'] = cat.index(item['LabelName'])
+        tmp['category_id'] = cat.index(item['LabelName']) + 1    # start from 1
         tmp['segmentation'] = list() 
         # bbox = [x,y,w,h]
         bbox = [float(item['XMin'])*width, float(item['YMin'])*height, (float(item['XMax'])-float(item['XMin']))*width, (float(item['YMax'])-float(item['YMin']))*height]
@@ -96,7 +87,7 @@ def main():
     # write categories
     for index,item in enumerate(cat):
         tmp = dict()
-        tmp['id'] = index
+        tmp['id'] = index+1    # starts from 1
         tmp['name'] = item
         tmp['supercategory'] = None
         result['categories'].append(tmp)
