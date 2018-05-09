@@ -7,7 +7,8 @@ import os
 import json
 import pprint
 
-sys.path.append('../lib')
+cur_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(cur_path,'../lib'))
 from openimage import load_categories,load_annotations
 from image import get_image_size_core,check_bounding_box
 
