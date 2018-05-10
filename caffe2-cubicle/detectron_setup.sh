@@ -24,10 +24,11 @@ python setup.py install --user
 # install detectron
 cd ${ROOT_PATH}
 git clone https://github.com/facebookresearch/Detectron.git --recursive
-cd Detectron/lib
+# cd Detectron/lib
+cd Detectron
 make
-cd ../
-python tests/test_spatial_narrow_as_op.py    # test installation
+# python tests/test_spatial_narrow_as_op.py    # test installation
+python detectron/tests/test_spatial_narrow_as_op.py    # test installation
 git remote remove origin
 git remote add upstream git@github.com:facebookresearch/Detectron.git
 git remote add origin git@github.com:Northrend/Detectron.git

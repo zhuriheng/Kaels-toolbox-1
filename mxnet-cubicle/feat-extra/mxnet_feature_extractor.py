@@ -17,8 +17,9 @@ def net_init(output_layer='flatten0_output',batch_size=1,image_width=224):
     '''
     initialize mxnet model
     '''
+    epoch = 16
     # get compute graph
-    sym, arg_params, aux_params = mx.model.load_checkpoint(sys.argv[1], 0)   # load original model
+    sym, arg_params, aux_params = mx.model.load_checkpoint(sys.argv[1], epoch)   # load original model
     output_layer = sym.get_internals()['flatten0_output']
     # bind module with graph
     model = mx.mod.Module(symbol=output_layer, context=mx.gpu(0), label_names=None)
@@ -53,7 +54,8 @@ def extra_feature(model, image_path):
     return output
 
 def main():
-    root_path = './test-images/'
+    # root_path = './test-images/'
+    root_path = sys.argv[4] 
     with open(sys.argv[2],'r') as f:
         images = [os.path.join(root_path,x.strip()) for x in f.readlines()]
     image_number = len(images)
@@ -66,7 +68,11 @@ def main():
         if np.shape(output) != tuple():
             feature[i] = output
     print('extraction time: {:.6f}s'.format(time.time()-tic))
-    np.save(sys.argv[3], feature)
+    try:
+        np.save(sys.argv[3], feature)
+    except:
+        np.save('./tmp.npy', feature)
+        print('saving failed, result file saved to ./tmp.npy')
     print('...done')
     # print('==> Original params:')
     # pprint.pprint(zip(sym.list_arguments(), sym.infer_shape(data=(1, 3, 224, 224))[0]))

@@ -177,7 +177,7 @@ def net_single_infer(model, list_image_path):
     std_r, std_g, std_b = float(args['--std'].split(',')[0]), float(args['--std'].split(',')
                                                                     [1]), float(args['--std'].split(',')[2])
 
-    tic = time.time()
+    # tic = time.time()
     img_batch = mx.nd.array(np.zeros((batch_size, 3, image_width, image_width)))
     for index, image_path in enumerate(list_image_path):
         # image preprocessing
@@ -214,6 +214,8 @@ def net_single_infer(model, list_image_path):
     ## forward propagation
     # print(Batch([mx.nd.array(img)]))
     # model.forward(Batch([mx.nd.array(img)]))
+    
+    tic = time.time()
     model.forward(Batch([img_batch]))
     output_prob_batch = model.get_outputs()[0].asnumpy()
     toc = time.time()
