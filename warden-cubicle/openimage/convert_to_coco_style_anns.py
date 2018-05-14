@@ -75,7 +75,7 @@ def main():
         check = check_bounding_box(tmp['bbox'], width, height, item['ImageID'])
         if check:    # catch box
             err_lst.append((item['ImageID'],width,height,tmp['id'],tmp['bbox']))
-        tmp['iscrowd'] = None
+        tmp['iscrowd'] = 0 
         result['annotations'].append(tmp)
         
         count += 1
