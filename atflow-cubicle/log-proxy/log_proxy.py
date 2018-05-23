@@ -20,7 +20,8 @@ import pprint
 
 
 # REMOTE_API = "http://atnet-apiserver.ava.k8s-xs.qiniu.io/"
-REMOTE_API = "http://atnet-apiserver.ava-staging.k8s-xs.qiniu.io/"
+# REMOTE_API = "http://atnet-apiserver.ava-staging.k8s-xs.qiniu.io/"
+REMOTE_API = "http://atnet-apiserver.ava-staging.ke-xs.cloudappl.com/"
 
 
 def _init_():
@@ -28,6 +29,7 @@ def _init_():
     Export service logs using atflow log proxy
 
     Change log:
+    2018/05/23      v1.2                update remote api
     2018/03/28      v1.1                update remote api
     2018/02/26      v1.0                basic functions
 
