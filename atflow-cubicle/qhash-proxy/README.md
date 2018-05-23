@@ -14,13 +14,21 @@
 
 可以在下载完成后重命名为 qhash_proxy，并**确认文件的可执行权限**
 
+#### v1.2 
+
+> update 2018-05-23 
+
+* [linux](http://p4ukyt7s7.bkt.clouddn.com/qhash_proxy/v1.2/qhash_proxy_linux)
+
+* [osx](http://p4ukyt7s7.bkt.clouddn.com/qhash_proxy/v1.2/qhash_proxy_mac)
+
 #### v1.0 
 
 > update 2018-03-20
 
 * [linux](http://p4ukyt7s7.bkt.clouddn.com/qhash_proxy/v1.0/qhash_proxy_linux)
 
-* [osx](http://p4ukyt7s7.bkt.clouddn.com/qhash_proxy/v1.0/qhash_proxy_osx)
+* [osx](http://p4ukyt7s7.bkt.clouddn.com/qhash_proxy/v1.0/qhash_proxy_mac)
 
 ### rock 'n roll
 

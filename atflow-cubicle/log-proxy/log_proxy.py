@@ -21,7 +21,8 @@ import pprint
 
 # REMOTE_API = "http://atnet-apiserver.ava.k8s-xs.qiniu.io/"
 # REMOTE_API = "http://atnet-apiserver.ava-staging.k8s-xs.qiniu.io/"
-REMOTE_API = "http://atnet-apiserver.ava-staging.ke-xs.cloudappl.com/"
+REMOTE_API = "http://atnet-apiserver.ava-staging.ke-xs.cloudappl.com/"  # outer
+# REMOTE_API = "http://atnet-apiserver-internal.ava-staging.k8s-xs.qiniu.io/" # intra
 
 
 def _init_():
