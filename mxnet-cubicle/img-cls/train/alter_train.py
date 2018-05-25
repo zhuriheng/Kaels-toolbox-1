@@ -19,6 +19,9 @@ import mxnet as mx
 from importlib import import_module
 from operator_py import svm_metric 
 
+import pprint
+import numpy as np
+
 # init global logger
 log_format = '%(asctime)s %(levelname)s: %(message)s'
 logging.basicConfig(level=logging.INFO, format=log_format)
@@ -62,6 +65,7 @@ def _init_():
 
     Usage:
         mxnet_train.py      <log> [-f|--finetune] [-r|--resume] [-t|--test-io] [-s|--save-json]
+                            [-a|--add-mcls-block] [-m|--mnet-train]
                             [--log-lv=str --log-mode=str --data-train=str --data-dev=str]
                             [--model-prefix=str --num-epochs=int --threshold=flt --gpus=lst]
                             [--kv-store=str --network=str --num-layers=int --pretrained-model=str]
@@ -84,6 +88,8 @@ def _init_():
         -t --test-io                test reading speed mode, without training
         -r --resume                 set to resume training job  
         -s --save-json              whether save ./finetuned-symbol.json or not
+        -a --add-mcls-block         only add multiple classification blocks to original net
+        -m --mnet-train             set to choose multiple nets alternatively training mode
         ------------------------------------------------------------------------------------------------------------
         --log-lv=str                logging level, one of INFO DEBUG WARNING ERROR CRITICAL [default: INFO]
         --log-mode=str              log file mode [default: w]
@@ -191,7 +197,7 @@ def _save_model(model_prefix, rank=0):
         model_prefix, rank))
 
 
-def _get_iterators(data_train, data_dev, batch_size, data_shape=(3, 224, 224), resize=[-1, -1], dtype=None):
+def _get_iterators(data_train, data_dev, batch_size, data_shape=(3, 224, 224), resize=[-1, -1], dtype=None, data_index=None):
     '''
     define the function which returns the data iterators
     '''
@@ -200,13 +206,23 @@ def _get_iterators(data_train, data_dev, batch_size, data_shape=(3, 224, 224), r
     [max_random_scale, min_random_scale] = [float(x) for x in args['--resize-scale'].split(',')]
     logger.info('Input normalization params: mean_rgb {}, std_rgb {}'.format([mean_r, mean_g, mean_b],[std_r, std_g, std_b]))
     [resize_train, resize_dev] = resize
-    label_name = 'softmax_label' if not args['--use-svm'] else 'svm_label'
+
+    if not args['--use-svm']:
+        if data_index:
+            label_name = 'softmax-{}_label'.format(data_index)
+            print(label_name)
+        else:
+            label_name = 'softmax_label' 
+    else :
+        label_name = 'svm_label'
+    
     train = mx.io.ImageRecordIter(
         dtype=dtype,
         path_imgrec=data_train,
-	# preprocess_threads=32,
+	    # preprocess_threads=32,
         data_name='data',
         label_name=label_name,
+        label_width=1,
         batch_size=batch_size,
         data_shape=data_shape,
         resize=resize_train,
@@ -225,9 +241,10 @@ def _get_iterators(data_train, data_dev, batch_size, data_shape=(3, 224, 224), r
     val = mx.io.ImageRecordIter(
         dtype=dtype,
         path_imgrec=data_dev,
-	# preprocess_threads=32,
+	    # preprocess_threads=32,
         data_name='data',
         label_name=label_name,
+        label_width=1,
         batch_size=batch_size,
         data_shape=data_shape,
         resize=resize_dev,
@@ -327,7 +344,7 @@ def _get_fine_tune_model(symbol, arg_params, num_classes, layer_name='flatten0',
         data=net, num_hidden=num_classes, name='fc-' + str(num_classes))
     if use_svm:
         regularization_coefficient = float(args['--ref-coeff'])
-	    net = mx.symbol.SVMOutput(data=net, name='svm', regularization_coefficient=regularization_coefficient) if use_svm == 'l2' else mx.symbol.SVMOutput(data=net, name='svm', use_linear=1, regularization_coefficient=regularization_coefficient)
+	net = mx.symbol.SVMOutput(data=net, name='svm', regularization_coefficient=regularization_coefficient) if use_svm == 'l2' else mx.symbol.SVMOutput(data=net, name='svm', use_linear=1, regularization_coefficient=regularization_coefficient)
     else:
         net = mx.symbol.SoftmaxOutput(data=net, name='softmax')
     new_args = dict({k: arg_params[k] for k in arg_params if 'fc1' not in k})
@@ -341,6 +358,8 @@ def _whatever_the_fucking_fit_is(symbol, arg_params, aux_params, train, val, bat
     '''
     training function
     '''
+    # import pprint
+    # pprint.pprint(args)
     # official argument kv-store
     kv = mx.kvstore.create(args['--kv-store'])
 
@@ -364,14 +383,15 @@ def _whatever_the_fucking_fit_is(symbol, arg_params, aux_params, train, val, bat
         'wd': float(args['--weight-decay']),
         'lr_scheduler': lr_scheduler}
     
-     
-    label_names = ['softmax_label'] if not args['--use-svm'] else ['svm_label']
+    # label_names = ['softmax_label'] if not args['--use-svm'] else ['svm_label']
+    label_names = ['softmax-0_label','softmax-1_label'] 
     # freeze weights before classifier
     if args['--freeze-weights']:
         freeze_list = [k for k in arg_params if 'fc' not in k] # fix all weights except for fc layers
         mod = mx.mod.Module(symbol=symbol, context=devices, label_names=label_names, fixed_param_names=freeze_list)
     else:
         mod = mx.mod.Module(symbol=symbol, context=devices, label_names=label_names)
+    # print(train.provide_label)
     mod.bind(data_shapes=train.provide_data, label_shapes=train.provide_label)
     # initialize weights
     if args['--network'] == 'alexnet':
@@ -410,6 +430,132 @@ def _whatever_the_fucking_fit_is(symbol, arg_params, aux_params, train, val, bat
             allow_missing=True)
     return mod.score(val, metrics)
 
+def _fit_multi_nets(symbol, arg_params, aux_params, train, val, batch_size, args, n_round):
+    '''
+    training function
+    '''
+    # official argument kv-store
+    kv = mx.kvstore.create(args['--kv-store'])
+
+    # save model
+    checkpoint = _save_model(args['--model-prefix'], kv.rank)
+
+    # set devices
+    devices = mx.cpu() if args['--gpus'] is None else [mx.gpu(int(i))
+                                                       for i in args['--gpus'].split(',')]
+
+    # update learning rate
+    num_gpus = len(args['--gpus'].split(',')
+                   ) if args['--gpus'] is not None else 1
+    lr, lr_scheduler = _get_lr_scheduler(args, kv, num_gpus)
+
+    # optimizer params of default optimizer-'sgd'
+    lr_scheduler = lr_scheduler
+    optimizer_params = {
+        'learning_rate': lr,
+        'momentum': float(args['--momentum']),
+        'wd': float(args['--weight-decay']),
+        'lr_scheduler': lr_scheduler}
+    
+    label_names_master = ['softmax-1_label','softmax-2_label'] 
+    # label_names_master = ['flatten_label'] 
+    label_names_slave_0 = ['softmax-1_label']
+    label_names_slave_1 = ['softmax-2_label']
+    for i in xrange(len(symbol)):
+        print(symbol[i].list_outputs())
+    
+    # freeze
+    freeze_lst = [['fc-1-3_weight','fc-1-3_bias','fcint-1_weight','fcint-1_bias'],['fc-2-4_weight','fc-2-4_bias','fcint-2_weight','fcint-2_bias']]
+
+    # master module
+    # label = np.random.randint(0, 10, (1280,))
+    # data = np.ones((10000,3,224,224))  
+    # data_iter = mx.io.NDArrayIter(data=data, label=label, label_name='flatten_output', batch_size=64)
+    mod_master = mx.mod.Module(symbol=symbol[0], context=devices, label_names=label_names_master)
+    mod_1 = mx.mod.Module(symbol=symbol[1], context=devices, label_names=label_names_slave_0)
+    # mod_1 = mx.mod.Module(symbol=symbol[0], context=devices, label_names=label_names_slave_0, fixed_param_names=freeze_lst[0])
+    pprint.pprint(mod_1.symbol.list_arguments())
+    mod_2 = mx.mod.Module(symbol=symbol[2], context=devices, label_names=label_names_slave_1)
+    # mod_2 = mx.mod.Module(symbol=symbol[2], context=devices, label_names=label_names_slave_1, fixed_param_names=freeze_lst[1])
+    pprint.pprint(mod_2.symbol.list_arguments())
+
+    # mod_master.bind(data_shapes=data_iter.provide_data, label_shapes=data_iter.provide_label)
+    mod_master.bind(data_shapes=train[0].provide_data, label_shapes=train[0].provide_label)
+    # initialize weights
+    mod_master.init_params(initializer=mx.init.Xavier(rnd_type='gaussian', factor_type="in", magnitude=2))
+
+    mod_1.bind(data_shapes=train[0].provide_data, label_shapes=train[0].provide_label, shared_module=mod_master)
+    mod_2.bind(data_shapes=train[1].provide_data, label_shapes=train[1].provide_label, shared_module=mod_master)
+
+    # initialize weights
+    # mod_1.init_params(initializer=mx.init.Xavier(rnd_type='gaussian', factor_type="in", magnitude=2))
+    # mod_2.init_params(initializer=mx.init.Xavier(rnd_type='gaussian', factor_type="in", magnitude=2))
+        
+    _ = mod_1.get_params()[0]
+    pprint.pprint([x for x in _.keys() if "fc" in x])
+
+    mod_1.set_params(arg_params[1], aux_params[1], allow_missing=True, allow_extra=True)
+    _ = mod_1.get_params()[0]
+    pprint.pprint([x for x in _.keys() if "fc" in x])
+
+    # set metrics during training
+    # if len(args['--metrics'].split(',')) == 1:
+    #     metrics = args['--metrics']
+    # elif len(args['--metrics'].split(',')) > 1:
+    #     metrics = _get_eval_metrics(args['--metrics'].split(','))
+    metrics = args['--metrics'] if len(args['--metrics'].split(
+        ',')) == 1 else _get_eval_metrics(args['--metrics'].split(','))
+
+    batch_end_callbacks = _get_batch_end_callback(
+        batch_size, int(args['--disp-batches']))
+    # batch_end_callbacks = mx.callback.Speedometer(batch_size, int(args['--disp-batches']))
+    
+    # assert False, 'debugging'
+
+    print('==> training net 1 for round {}...'.format(n_round))
+    mod_1.fit(train[0], val[0],
+            eval_metric=metrics,
+            begin_epoch=int(args['--load-epoch']),
+            num_epoch=int(args['--num-epochs']),
+            kvstore=kv,
+            optimizer=args['--optimizer'],
+            optimizer_params=optimizer_params,
+            batch_end_callback=batch_end_callbacks,
+            epoch_end_callback=checkpoint,
+            allow_missing=True)
+
+    mod_2.set_params(arg_params[2], aux_params[2], allow_missing=True, allow_extra=True)
+    
+    print('==> training net 2 for round {}...'.format(n_round))
+    mod_2.fit(train[1], val[1],
+            eval_metric=metrics,
+            begin_epoch=int(args['--load-epoch']),
+            num_epoch=int(args['--num-epochs']),
+            kvstore=kv,
+            optimizer=args['--optimizer'],
+            optimizer_params=optimizer_params,
+            batch_end_callback=batch_end_callbacks,
+            epoch_end_callback=checkpoint,
+            allow_missing=True)
+
+    return [mod_1.score(val[0], metrics),mod_2.score(val[1], metrics)]
+
+
+def modify_net(sym_in, classifier_num, class_num_lst, feature_layer='flatten', use_fc=True):
+    def _add_classfier_block(sym_in, num_classes, classifier_idx): 
+        fc = mx.symbol.FullyConnected(data=sym_in, num_hidden=1280 , name='fcint-{}'.format(classifier_idx)) 
+        cls = mx.symbol.FullyConnected(data=fc, num_hidden=num_classes, name='fc-{}'.format(classifier_idx) + '-' + str(num_classes))
+        return mx.symbol.SoftmaxOutput(data=cls, name='softmax-{}'.format(classifier_idx))
+
+    softmax_lst = list()
+    all_layers = sym_in.get_internals()
+    net = all_layers[feature_layer + '_output']
+    for i in xrange(classifier_num):
+        softmax_lst.append(_add_classfier_block(net, class_num_lst[i], i+1))
+    group = mx.symbol.Group(softmax_lst)
+    group.save('./tmp-symbol.json')
+    logger.info('Saved to ./tmp-symbol.json')
+    
 
 def main():
     logger.debug('main function entry checkpoint')
@@ -418,10 +564,57 @@ def main():
     num_classes = int(args['--num-classes'])
     batch_per_gpu = int(args['--batch-size'])
     resize = [int(x) for x in args['--resize'].split(',')]
-    num_gpus = len(args['--gpus'].split(',')
-                   ) if args['--gpus'] is not None else 1
+    num_gpus = len(args['--gpus'].split(',')) if args['--gpus'] is not None else 1
     batch_size = batch_per_gpu * num_gpus
     data_type = args['--data-type'] if args['--data-type'] else None
+    # ------------------------------------------------------------------------ 
+    if args['--mnet-train']:
+        # global args
+        def _gen_alternative_model(sym_in, num_classes, classifier_idx):
+            _ = sym_in.get_internals()['flatten_output']
+            fc = mx.symbol.FullyConnected(data=_, num_hidden=1280 , name='fcint-{}'.format(classifier_idx)) 
+            cls = mx.symbol.FullyConnected(data=fc, num_hidden=num_classes, name='fc-{}'.format(classifier_idx) + '-' + str(num_classes))
+            return mx.symbol.SoftmaxOutput(data=cls, name='softmax-{}'.format(classifier_idx))
+
+        def _load_alternative_model(alt_model, net_index, epoch):
+            _sym, _args, _aux_params = mx.model.load_checkpoint(alt_model, epoch)
+            print(_sym.list_outputs())
+            _sym = _sym.get_internals()['softmax-{}_output'.format(net_index)]
+            return _sym, _args, _aux_params 
+
+        interval_epoch = 1
+        num_round = 5
+        args['--num-epochs'] = interval_epoch
+        args['--load-epoch'] = 0 
+        # multiple nets alternatively training mode
+        logger.info('start multiple nets alternatively training job...')
+        # master net 
+        sym, arg_params, aux_params= ['dummy' for i in range(3)],['dummy' for i in range(3)],['dummy' for i in range(3)] 
+        sym[0], _, aux_params[0] = mx.model.load_checkpoint(args['--pretrained-model'], args['--load-epoch'])
+        # sym[0] = sym[0].get_internals()['flatten_output']
+        arg_params[0] = dict({k: _[k] for k in _ if 'fc' not in k})
+
+        # load data
+        train, val = ['dummy' for i in range(2)],['dummy' for i in range(2)]
+        train[0], val[0] = _get_iterators('/workspace/tmp/train-1.rec','/workspace/tmp/train-1.rec',batch_size, data_shape=(3, int(args['--img-width']), int(args['--img-width'])), resize=resize, dtype=data_type, data_index=1)
+        train[1], val[1] = _get_iterators('/workspace/tmp/train-2.rec','/workspace/tmp/train-2.rec',batch_size, data_shape=(3, int(args['--img-width']), int(args['--img-width'])), resize=resize, dtype=data_type, data_index=2)
+
+        for n in xrange(num_round):
+            # init 
+            args['--load-epoch'] = n * interval_epoch 
+            # load model and data
+            sym[1], arg_params[1], aux_params[1] = _load_alternative_model(args['--pretrained-model'], 1, args['--load-epoch'])
+            # arg_params[1] = arg_params[0]
+            sym[2], arg_params[2], aux_params[2] = _load_alternative_model(args['--pretrained-model'], 2, args['--load-epoch'])
+            # arg_params[2] = arg_params[0]
+                           
+            # fit
+            mod_scores = _fit_multi_nets(sym, arg_params, aux_params, train, val, batch_size, args, n)
+            # os.system('cp {} {}'.format())
+
+        return 0
+    # ------------------------------------------------------------------------ 
+
     (train, val) = _get_iterators(args['--data-train'], args['--data-dev'],
                                   batch_size, data_shape=(3, int(args['--img-width']), int(args['--img-width'])), resize=resize, dtype=data_type)
 
@@ -436,6 +629,7 @@ def main():
                     args['--disp-batches']) * int(args['--batch-size']) / (time.time() - tic)))
                 tic = time.time()
         return
+
 
     if args['--finetune']:
         # load pre-trained model
@@ -453,6 +647,8 @@ def main():
         new_sym, new_args, aux_params = mx.model.load_checkpoint(
             args['--pretrained-model'], int(args['--load-epoch']))
         logger.info('model loaded successfully, resume training job...')
+
+        
     else:
         # initialize network symbols only
         network = import_module('symbols.' + args['--network'])
@@ -477,6 +673,11 @@ if __name__ == '__main__':
         _init_.__doc__, version='mxnet training script {}'.format(version))
     _init_()
     logger.info('Start training job...')
-    main()
+    if args['--add-mcls-block']:
+        logging.info('adding {} classifier-blocks to net...'.format(2))
+        sym, arg_params, aux_params = mx.model.load_checkpoint(args['--pretrained-model'], int(args['--load-epoch']))
+        modify_net(sym, 2, [3, 4], feature_layer='flatten', use_fc=True)
+    else:
+        main()
     logger.info('...Done')
 
