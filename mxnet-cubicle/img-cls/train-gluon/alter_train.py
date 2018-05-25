@@ -83,8 +83,7 @@ def main():
     kv_store = mx.kvstore.create(cfg.KV_STORE)
     ctx = [mx.gpu(i) for i in cfg.GPU_IDX]
     num_gpu = len(cfg.GPU_IDX)
-    batch_size_per_gpu = cfg.BATCH_SIZE
-    batch_size = num_gpu * batch_size_per_gpu
+    batch_size = num_gpu * cfg.BATCH_SIZE
     data_shape = cfg.INPUT_SHAPE
     num_nets = cfg.ALTERNATE_NUM_NETS
     num_classes = cfg.NUM_CLASSES
@@ -140,7 +139,7 @@ def main():
     train_iters = ['dummy' for x in range(num_nets)]
     dev_iters = ['dummy' for x in range(num_nets)]
     for i in range(cfg.ALTERNATE_NUM_NETS):
-        train_iters[i], dev_iters[i] = inst_iterators(cfg.TRAIN_REC[i], cfg.DEV_REC[i], batch_size=batch_size_per_gpu, data_shape=data_shape)
+        train_iters[i], dev_iters[i] = inst_iterators(cfg.TRAIN_REC[i], cfg.DEV_REC[i], batch_size=batch_size, data_shape=data_shape)
 
     # set learning rates
     lrs, lr_schedulers = ['dummy' for x in range(num_nets+1)], ['dummy' for x in range(num_nets+1)]
