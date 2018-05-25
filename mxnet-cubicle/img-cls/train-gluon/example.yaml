@@ -1,28 +1,28 @@
 TRAIN:
     # path
     LOG_PATH: /path/to/tmp.log 
-    OUTPUT_MODEL_PREFIX: /path/to/model/with/prefix/
+    OUTPUT_MODEL_PREFIX: /path/to/model/with/prefix
     TRAIN_REC: [/path/to/train-1.rec,
                 /path/to/train-2.rec]
     DEV_REC: [/path/to/dev-1.rec,
               /path/to/dev-2.rec]
-    PRETRAINED_MODEL_PREFIX: /path/to/pretrained/model/with/prefix/
+    PRETRAINED_MODEL_PREFIX: /path/to/pretrained/model/with/prefix
 
     # training
     PRETRAINED_MODEL_EPOCH: 0   
     PROCESS_THREAD: 16  # number of thread to pre-process recordio files 
-    GPU_IDX: [0, 1, 2, 3, 4, 5, 6, 7]   
+    GPU_IDX: [0, 1] # use gpu 0 and 1
     LOG_NET_PARAMS: True    # print params of each net 
-    NUM_SAMPLES: [931534, 87667]    # number of training samples, 2 datasets
-    NUM_CLASSES: [3, 48]    # number of classes, 2 datasets
-    MAX_EPOCHS: 50  
+    NUM_SAMPLES: [10000, 5000]    # number of training samples, 2 datasets
+    NUM_CLASSES: [3, 2]    # number of classes, 2 datasets
+    MAX_EPOCHS: 100  
     METRICS: [acc, ce]  # callback accuracy and cross-entropy loss
-    BATCH_SIZE: 64  # mini-batch size per gpu
+    BATCH_SIZE: 16  # mini-batch size per gpu
     
     # learning hyper params
-    BASE_LR: 0.01
-    LR_FACTOR: 0.316228
-    STEP_EPOCHS: [5, 10, 20, 25, 35, 45, 55] 
+    BASE_LR: 0.2
+    LR_FACTOR: 0.1
+    STEP_EPOCHS: [30, 60, 90] 
     WEIGHT_DECAY: [.0005, .0005, .0005] # for 3 nets
     MOMENTUM: [.9, .9, .9]  # for 3 nets
 
