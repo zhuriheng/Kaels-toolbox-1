@@ -30,11 +30,12 @@ fhandler = None     # log to file
 def _init_():
     '''
     Alternately training multi-image-classification networks on mxnet
-    Update: 2018/05/24
+    Update: 2018/05/28
     Author: @Northrend
     Contributor:
 
     Changelog:
+    2018/05/28      v1.1            fix evaluation bug 
     2018/05/24      v1.0            basic functions 
 
     Usage:

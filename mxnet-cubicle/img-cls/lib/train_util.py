@@ -98,7 +98,7 @@ def _step_one_epoch(branch_idx, epoch, data_iters, nets, trainers, metrics, batc
     for i in range(len(name)):
         logging.info('Epoch[{}] Branch-{} Training: {}={:.6f}'.format(epoch, branch_idx, name[i], acc[i]))
     logging.info('Epoch[{}] Time Cost: {:.6f}'.format(epoch, time.time()-start_time))
-    name, val_acc = _acc_evaluator_gluon(lambda x: nets[1](nets[0](x)), data_iters[0], ctx)
+    name, val_acc = _acc_evaluator_gluon(lambda x: nets[1](nets[0](x)), data_iters[1], ctx)
     logging.info('Epoch[{}] Branch-{} Validation: {}={:.6f}'.format(epoch, branch_idx, name, val_acc))
 
 
