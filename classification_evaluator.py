@@ -34,11 +34,12 @@ logger = logging.getLogger()
 def _init_():
     '''
     Evalutaion script for image-classification task
-    Update: 2018/02/08
+    Update: 2018/06/01
     Author: @Northrend
     Contributor:
 
     Change log:
+    2018/06/01      v2.1            fix numeric bug 
     2018/02/08      v2.0            support save error log
     2017/12/05      v1.5            support evaluation on all labels
     2017/08/15      v1.4            support confusion matrix
@@ -93,7 +94,7 @@ def _check_path(path):
     return 0
 
 
-def _read_list(image_list_file):
+def _read_list(image_list_file, base_name=False):
     '''
     read groundtruth list
     file syntax:
@@ -103,7 +104,10 @@ def _read_list(image_list_file):
     dict_gt = dict()
     f_image_list = open(image_list_file, 'r')
     for buff in f_image_list:
-        dict_gt[os.path.basename(buff.strip().split()[0])] = int(buff.split()[1])
+        if base_name:
+            dict_gt[os.path.basename(buff.strip().split()[0])] = int(buff.split()[1])
+        else:
+            dict_gt[buff.strip().split()[0]] = int(buff.split()[1])
     return dict_gt
 
 
@@ -253,6 +257,7 @@ def _calculate_accuracy(dict_log, dict_gt, err_log=None):
     '''
     total, tptn, tp, fp, fn, miss = 0, 0, 0, 0, 0, 0
     err_dic = dict()
+    epsilon = 10^(-10)
     for image in dict_log.keys():
         total += 1
 
@@ -287,11 +292,11 @@ def _calculate_accuracy(dict_log, dict_gt, err_log=None):
 
     logger.info('files: ' + str(len(dict_log.keys())))
     top_1_error = 1 - float(tptn) / total
-    precision = float(tp) / (tp + fp)
-    recall = float(tp) / (tp + fn)
+    precision = float(tp) / (tp + fp + epsilon)
+    recall = float(tp) / (tp + fn + epsilon)
     logger.info('missing files: ' + str(miss))
     if err_log:
-        with open(err_log,'w') as f:
+        with open(err_log + '.{}'.format(POSITIVE),'w') as f:
             json.dump(err_dic,f,indent=4)
     return top_1_error, precision, recall
 
