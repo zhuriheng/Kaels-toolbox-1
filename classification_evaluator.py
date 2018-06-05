@@ -39,6 +39,7 @@ def _init_():
     Contributor:
 
     Change log:
+    2018/06/04      v2.2            fix basename bug 
     2018/06/01      v2.1            fix numeric bug 
     2018/02/08      v2.0            support save error log
     2017/12/05      v1.5            support evaluation on all labels
@@ -51,7 +52,7 @@ def _init_():
 
     Usage:
         classification_evaluator.py     <in-log> <out-path> (--gt=str)
-                                        [-s|--service] [-c|--conf-mat] [-a|--all-labels] [-e|--err-log]
+                                        [-s|--service] [-c|--conf-mat] [-a|--all-labels] [-e|--err-log] [-b|--base-name]
                                         [--log-lv=str --pos=int --label=str --nrop]
                                         [--top-k=int --label-range=int]
         classification_evaluator.py     -v | --version
@@ -67,6 +68,7 @@ def _init_():
         -s --service                online-service log mode
         -c --conf-mat               generate confusion matrix mode
         -a --all-labels             recurrently eval on all labels mode
+        -b --base-name              use basename of files in gt list
         -e --err-log                save error image json as /out-path/err.json
         ---------------------------------------------------------------------------------------------------
         --log-lv=str                logging level, one of INFO DEBUG WARNING ERROR CRITICAL [default: INFO]
@@ -292,8 +294,10 @@ def _calculate_accuracy(dict_log, dict_gt, err_log=None):
 
     logger.info('files: ' + str(len(dict_log.keys())))
     top_1_error = 1 - float(tptn) / total
-    precision = float(tp) / (tp + fp + epsilon)
-    recall = float(tp) / (tp + fn + epsilon)
+    # precision = float(tp) / (tp + fp + epsilon)
+    precision = float(tp) / (tp + fp)
+    # recall = float(tp) / (tp + fn + epsilon)
+    recall = float(tp) / (tp + fn)
     logger.info('missing files: ' + str(miss))
     if err_log:
         with open(err_log + '.{}'.format(POSITIVE),'w') as f:
@@ -341,7 +345,7 @@ def _generate_service_evaluation_result(file_result, precision, recall, top_1_er
 @_time_it.time_it
 def main():
     global POSITIVE
-    dict_gt = _read_list(args['--gt'])      # read groundtruth
+    dict_gt = _read_list(args['--gt'], base_name=True) if args['--base-name'] else _read_list(args['--gt'])      # read groundtruth
     file_log = open(args['<in-log>'], 'r')
     dict_log = json.load(file_log)
     err_log = os.path.join(args['<out-path>'], 'err_img.log') if args['--err-log'] else None
