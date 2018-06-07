@@ -29,7 +29,7 @@ def general_finetune_model(symbol, arg_params, num_classes, layer_name='flatten0
     return net, new_args
 
 
-def gluon_finetune_model(): 
+def gluon_finetune_model(symbol, layer_name): 
     '''
     '''
     def _init_gluon_style_params(raw_params, net_params, ctx):
@@ -48,9 +48,37 @@ def gluon_finetune_model():
 
 
 def gluon_init_classifer(num_class, ctx):
+    '''
+    '''
     net = mx.gluon.nn.Sequential()
     with net.name_scope():
         net.add(mx.gluon.nn.Dense(num_class))
     net.collect_params().initialize(mx.init.Xavier(rnd_type='gaussian', factor_type="in", magnitude=2), ctx=ctx)
     return net
     
+
+def init_forward_net(symbol, arg_params, aux_params, batch_size, input_shape, ctx=None, redefine_output_group=None, allow_missing=False, allow_extra=False):
+    '''
+    '''
+    ctx = ctx if ctx else mx.gpu(0) 
+    if redefine_output_group:
+        assert len(redefine_output_group) >= 1, logging.error("If outputs need to be redefined, please give at least one output layer name.")
+        internals = symbol.get_internals()
+        # print(internals.list_arguments())
+        # print(internals.list_outputs())
+        for key in redefine_output_group:
+            assert key in internals.list_outputs(), logging.error("Output layer:{} not found in net".format(key))
+        symbol = mx.sym.Group([internals[x] for x in redefine_output_group])
+
+    # mod = mx.model.FeedForward(symbol,
+    #                            arg_params=arg_params,
+    #                            aux_params=aux_params,
+    #                            ctx=ctx,
+    #                            allow_extra_params=False,
+    #                            numpy_batch_size=1) 
+    # return mod
+
+    model = mx.mod.Module(symbol=symbol, context=ctx, label_names=None)
+    model.bind(for_training=False, data_shapes=[('data', (batch_size, input_shape[0], input_shape[1], input_shape[2]))], label_shapes=model._label_shapes)
+    model.set_params(arg_params, aux_params, allow_missing=allow_missing, allow_extra=allow_extra)
+    return model 

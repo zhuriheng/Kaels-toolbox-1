@@ -178,7 +178,7 @@ def get_batch_end_callback(batch_size, display_lr=True, display_batch=20):
 def alternate_train_gluon(phase, nets, train_iters, dev_iters, num_samples, lrs, lr_schedulers, batch_size, metrics, ctx, epochs=10, weight_decays=list(), momentums=list(), log_interval=40):
     '''
     '''
-    assert phase in [1,2], logging.error('Value of phase should be 1 or 2 so far')
+    assert phase in [1,2], logging.error('Value of phase should be 1 or 2 for now')
     assert len(weight_decays)==len(momentums)==len(nets), logging.error('Invalid number of weight decays or momentums')
 
     # kv = mx.kvstore.create(cfg.TRAIN.KV_STORE)

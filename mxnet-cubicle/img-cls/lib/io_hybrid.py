@@ -5,6 +5,8 @@ from __future__ import print_function
 import os
 import logging
 import mxnet as mx
+import cv2
+import numpy as np
 from config import cfg
 
 
@@ -17,7 +19,7 @@ def check_dir(path):
         os.mkdir(dirname)
 
 
-def inst_iterators(data_train, data_dev, batch_size=1, data_shape=(3,224,224), resize=[-1,-1], resize_scale=[1,1], use_svm_label=False):
+def inst_iterators(data_train, data_dev, batch_size=1, data_shape=(3,224,224), resize=(-1,-1), resize_scale=(1,1), use_svm_label=False):
     '''
     Instantiate specified training and developing data iterators
     :params:
@@ -25,8 +27,8 @@ def inst_iterators(data_train, data_dev, batch_size=1, data_shape=(3,224,224), r
     data_dev        developing iterator
     batch_size      mini batch size, sum of all device
     data_shape      input shape
-    resize          resize shorter edge of [train,dev] data, -1 means no resize
-    resize_scale    resize train-data into [width*s, height*s], with s randomly chosen from this range 
+    resize          resize shorter edge of (train,dev) data, -1 means no resize
+    resize_scale    resize train-data into (width*s, height*s), with s randomly chosen from this range 
     use_svm_label   set as True if classifier needs svm label name
     :return:
     train, dev      tuple of 2 iterators
@@ -97,6 +99,7 @@ def load_model(model_prefix, load_epoch, gluon_style=False):
     gluon_style         set True to load model saved by gluon
     :return:
     sym, arg, aux       symbol, arg_params, aux_params of this model
+                        aux_params will be an empty dict in gluon style
     '''
     assert model_prefix and load_epoch is not None, logging.error('Missing valid pretrained model prefix')
     assert load_epoch is not None, logging.error('Missing epoch of pretrained model to load')
@@ -156,3 +159,33 @@ def save_model_gluon(net, model_prefix, rank=0):
     return 0
 
 
+def np_img_preprocessing(img, as_float=True, keep_aspect_ratio=False, **kwargs):
+    assert isinstance(img, np.ndarray), logging.error("Input images should be type of numpy.ndarray")
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    if as_float:
+        img = img.astype(float)
+    # reshape
+    if 'resize_w_h' in kwargs and not keep_aspect_ratio:
+        img = cv2.resize(img, (kwargs['resize_w_h'][0], kwargs['resize_w_h'][1]))
+    if 'resize_min_max' in kwargs and keep_aspect_ratio: 
+        ratio = float(max(img.shape[:2]))/min(img.shape[:2])
+        min_len, max_len = kwargs['resize_min_max']
+        if min_len*ratio <= max_len:    # resize by min
+            if img.shape[0] > img.shape[1]:     # h > w
+                img = cv2.resize(img, (min_len, int(min_len*ratio)))
+            elif img.shape[0] <= img.shape[1]:   # h <= w
+                img = cv2.resize(img, (int(min_len*ratio), min_len)) 
+        elif min_len*ratio > max_len:   # resize by max
+            if img.shape[0] > img.shape[1]:     # h > w
+                img = cv2.resize(img, (int(max_len/ratio), max_len))
+            elif img.shape[0] <= img.shape[1]:   # h <= w
+                img = cv2.resize(img, (max_len, int(max_len/ratio))) 
+    # normalization
+    if 'mean_rgb' in kwargs:
+        img -= kwargs['mean_rgb'][:]
+    if 'std_rgb' in kwargs:
+        img /= kwargs['std_rgb'][:] 
+    # (h,w,c) => (c,h,w)
+    img = np.swapaxes(img, 0, 2)
+    img = np.swapaxes(img, 1, 2)
+    return img

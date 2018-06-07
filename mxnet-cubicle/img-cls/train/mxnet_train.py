@@ -323,11 +323,13 @@ def _get_fine_tune_model(symbol, arg_params, num_classes, layer_name='flatten0',
     '''
     all_layers = symbol.get_internals()
     net = all_layers[layer_name + '_output']
-    net = mx.symbol.FullyConnected(
-        data=net, num_hidden=num_classes, name='fc-' + str(num_classes))
+    net = mx.symbol.FullyConnected(data=net, num_hidden=num_classes, name='fc-' + str(num_classes))
     if use_svm:
         regularization_coefficient = float(args['--ref-coeff'])
-	    net = mx.symbol.SVMOutput(data=net, name='svm', regularization_coefficient=regularization_coefficient) if use_svm == 'l2' else mx.symbol.SVMOutput(data=net, name='svm', use_linear=1, regularization_coefficient=regularization_coefficient)
+        if use_svm == 'l2':
+    	    net = mx.symbol.SVMOutput(data=net, name='svm', regularization_coefficient=regularization_coefficient) 
+        elif use_svm == 'l1':
+            mx.symbol.SVMOutput(data=net, name='svm', use_linear=1, regularization_coefficient=regularization_coefficient)
     else:
         net = mx.symbol.SoftmaxOutput(data=net, name='softmax')
     new_args = dict({k: arg_params[k] for k in arg_params if 'fc1' not in k})

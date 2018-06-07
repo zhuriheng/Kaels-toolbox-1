@@ -21,6 +21,11 @@ from collections import namedtuple
 from AvaLib import _time_it
 
 
+cur_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(cur_path,'../lib'))
+from io_hybrid import *
+
+
 def _init_():
     '''
     Inference script for image-classification task on mxnet
@@ -29,6 +34,7 @@ def _init_():
     Contributor: 
 
     Change log:
+    2018/05/31  v2.6    support log file name with parent path 
     2018/04/18  v2.5    support print foward fps
     2017/12/29  v2.4    fix numpy truth value err bug
     2017/12/11  v2.3    fix center crop bug
@@ -42,7 +48,7 @@ def _init_():
 
     Usage:
         mxnet_image_classifier.py       <in-list> <out-log> [-c|--confidence] [-t|--test] 
-                                        [--center-crop] [--output-fps]
+                                        [--center-crop] [--output-fps] [--name-with-par=int]
                                         (--label=str --model-prefix=str --model-epoch=int)
                                         [--batch-size=int --img-width=int --data-prefix=str]
                                         [--top-k=int --label-position=int --gpu=int]
@@ -74,6 +80,7 @@ def _init_():
         --mean=lst                  list of rgb mean value [default: 123.68,116.779,103.939]
         --std=lst                   list of rgb std value [default: 58.395,57.12,57.375]
         --pre-crop-width=int        set image resize width before cropping if center crop is true [default: 256]
+        --name-with-par=int         set to log filename of n level parent path
     '''
     print('=' * 80 + '\nArguments submitted:')
     for key in sorted(args.keys()):
@@ -107,6 +114,15 @@ def _read_list(image_list_file):
     for buff in f_image_list:
         image_list.append(buff.split()[0])
     return image_list
+
+
+def _get_file_with_parents(filepath, level=1):
+    '''
+    '''
+    common = filepath
+    for i in range(level + 1):
+        common = os.path.dirname(common)
+    return os.path.relpath(filepath, common)
 
 
 def _index_to_classname(label_file, classname_position=1):
@@ -187,26 +203,36 @@ def net_single_infer(model, list_image_path):
                 raise empty_image
         except:
             img_read = np.zeros((resize_width, resize_width, 3), dtype=np.uint8)
-            ERROR_LIST.append(os.path.basename(image_path))
+            if not args['--name-with-par']:
+                ERROR_LIST.append(os.path.basename(image_path))
+            else:
+                level = int(args['--name-with-par'])
+                ERROR_LIST.append(_get_file_with_parents(image_path,level=level))
             print('image error: ', image_path, ', inference result will be deprecated!')
-        img = cv2.cvtColor(img_read, cv2.COLOR_BGR2RGB)
-        img = img.astype(float)
-        img = cv2.resize(img, (resize_width, resize_width))
-        # img[:,:,0] -= mean_r
-        # img[:,:,0] /= std_r
-        # img[:,:,1] -= mean_g
-        # img[:,:,1] /= std_g
-        # img[:,:,2] -= mean_b
-        # img[:,:,2] /= std_b
-        img -= [mean_r, mean_g, mean_b]
-        img /= [std_r, std_g, std_b]
-        # (h,w,c) => (b,c,h,w)
-        img = np.swapaxes(img, 0, 2)
-        img = np.swapaxes(img, 1, 2)
-        # img = img[np.newaxis, :]
         if args['--center-crop']:
+            kwargs=dict()
+            kwargs['resize_min_max'] = (256,10000) 
+            kwargs['mean_rgb'] = [mean_r, mean_g, mean_b]
+            kwargs['std_rgb'] = [std_r, std_g, std_b]
+            img = np_img_preprocessing(img_read, keep_aspect_ratio=True, **kwargs)
             img = center_crop(img, image_width)
-        # img_batch[index] = mx.nd.array(img)[0]
+        else:
+            img = cv2.cvtColor(img_read, cv2.COLOR_BGR2RGB)
+            img = img.astype(float)
+            img = cv2.resize(img, (resize_width, resize_width))
+            # img[:,:,0] -= mean_r
+            # img[:,:,0] /= std_r
+            # img[:,:,1] -= mean_g
+            # img[:,:,1] /= std_g
+            # img[:,:,2] -= mean_b
+            # img[:,:,2] /= std_b
+            img -= [mean_r, mean_g, mean_b]
+            img /= [std_r, std_g, std_b]
+            # (h,w,c) => (b,c,h,w)
+            img = np.swapaxes(img, 0, 2)
+            img = np.swapaxes(img, 1, 2)
+            # img = img[np.newaxis, :]
+            # img_batch[index] = mx.nd.array(img)[0]
         img_batch[index] = mx.nd.array(img)
     # print(mx.nd.array(img).shape)
     # print(img_batch.asnumpy())
@@ -243,7 +269,11 @@ def net_single_infer(model, list_image_path):
 
         # write result dictionary
         result_dict = dict()
-        result_dict['File Name'] = os.path.basename(list_image_path[index])
+        if not args['--name-with-par']:
+            result_dict['File Name'] = os.path.basename(list_image_path[index])
+        else:
+            level = int(args['--name-with-par'])
+            result_dict['File Name'] = _get_file_with_parents(list_image_path[index], level=level)
         # get top-k indices and revert to top-1 at first
         result_dict['Top-{} Index'.format(k)] = index_list.tolist()[-k:][::-1]
         result_dict['Top-{} Class'.format(k)] = [label_list[int(i)]

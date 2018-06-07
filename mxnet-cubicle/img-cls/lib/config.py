@@ -126,7 +126,7 @@ __C.TRAIN.LOG_MODE = "w"
 __C.TRAIN.KV_STORE = b"device" 
 __C.TRAIN.USE_GPU = True 
 __C.TRAIN.GPU_IDX = [0]
-__C.TRAIN.NUM_SAMPLES = list() 
+__C.TRAIN.NUM_SAMPLES = 10000 
 __C.TRAIN.MAX_EPOCHS = 10
 __C.TRAIN.BATCH_SIZE = 4 
 __C.TRAIN.METRICS = ["acc"]
@@ -137,31 +137,31 @@ __C.TRAIN.LOG_NET_PARAMS = False
 __C.TRAIN.LOG_LR = True 
 
 # ---- network hyper params ----
-__C.TRAIN.FINETUNE = True
-__C.TRAIN.PRETRAINED_MODEL_PREFIX = ""
-__C.TRAIN.PRETRAINED_MODEL_EPOCH = 0
-__C.TRAIN.FINETUNE_LAYER = "flatten0"
-__C.TRAIN.FREEZE_WEIGHTS = False
+__C.TRAIN.FINETUNE = False 
+__C.TRAIN.FT = AttrDict()
+__C.TRAIN.FT.PRETRAINED_MODEL_PREFIX = ""
+__C.TRAIN.FT.PRETRAINED_MODEL_EPOCH = 0
+__C.TRAIN.FT.FINETUNE_LAYER = "flatten0"
+__C.TRAIN.FT.FREEZE_WEIGHTS = False
 
 __C.TRAIN.SCRATCH = False 
-__C.TRAIN.NETWORK = "resnet" 
-__C.TRAIN.X_NUM_GROUPS = 32 
-__C.TRAIN.DROP_OUT = 0 
+__C.TRAIN.SCR = AttrDict()
+__C.TRAIN.SCR.NETWORK = "resnet" 
+__C.TRAIN.SCR.X_NUM_GROUPS = 32 
+__C.TRAIN.SCR.DROP_OUT = 0 
 
 __C.TRAIN.RESUME = False 
-
-__C.TRAIN.ALTERNATE = False 
-__C.TRAIN.ALTERNATE_NUM_NETS = 2    # number of sub-nets 
-__C.TRAIN.ALTERNATE_PHASE = 1 
+__C.TRAIN.RES = AttrDict()
 
 # ---- data hyper params ----
 __C.TRAIN.USE_REC = True 
-__C.TRAIN.TRAIN_REC = list()
-__C.TRAIN.DEV_REC = list() 
+__C.TRAIN.TRAIN_REC = "" 
+__C.TRAIN.DEV_REC = "" 
 __C.TRAIN.PROCESS_THREAD = 4 
-__C.TRAIN.INPUT_SHAPE = (3,224,224)
-__C.TRAIN.RESIZE_SHAPE = [-1,-1]
-__C.TRAIN.RESIZE_SCALE = [1,1]
+__C.TRAIN.INPUT_SHAPE = (3, 224, 224)
+__C.TRAIN.RESIZE_RANGE = (800, 1600)
+__C.TRAIN.RESIZE_SHAPE = (-1, -1)
+__C.TRAIN.RESIZE_SCALE = (1, 1)
 __C.TRAIN.MEAN_RGB = [123.68, 116.779, 103.939] 
 __C.TRAIN.STD_RGB = [58.395, 57.12, 57.375] 
 __C.TRAIN.LABEL_WIDTH = 1
@@ -176,15 +176,43 @@ __C.TRAIN.OPTIMIZER = "sgd"
 __C.TRAIN.BASE_LR = 0.1
 __C.TRAIN.LR_FACTOR = 0.1
 __C.TRAIN.STEP_EPOCHS = list() 
-__C.TRAIN.WEIGHT_DECAY = [0.0005]
-__C.TRAIN.MOMENTUM = [0.9]
+__C.TRAIN.WEIGHT_DECAY = 0.0005
+__C.TRAIN.MOMENTUM = 0.9
 
 # ---- classfier hyper params ----
-__C.TRAIN.NUM_CLASSES = list() 
+__C.TRAIN.NUM_CLASSES = 1000 
 __C.TRAIN.USE_SOFTMAX = True 
 __C.TRAIN.USE_SVM = True 
 __C.TRAIN.SVM_LOSS = "l2" 
 __C.TRAIN.SVM_REG_COEFF = 1 
+
+# ---- alternately training setting ----
+__C.TRAIN.ALTERNATE = False 
+__C.TRAIN.ALT = AttrDict()
+__C.TRAIN.ALT.TRAIN_RECS = list()
+__C.TRAIN.ALT.DEV_RECS = list() 
+__C.TRAIN.ALT.NUM_NETS = 2 
+__C.TRAIN.ALT.NUM_CLASSES = list() 
+__C.TRAIN.ALT.NUM_SAMPLES = list() 
+__C.TRAIN.ALT.PHASE = 1
+__C.TRAIN.ALT.WEIGHT_DECAYS = list()
+__C.TRAIN.ALT.MOMENTUMS = list() 
+
+# ---- precision-guided training setting ----  
+__C.TRAIN.PRECISION_GUIDED = False
+__C.TRAIN.PG = AttrDict()
+__C.TRAIN.PG.LOG_GEN_GUIDER = False 
+__C.TRAIN.PG.INPUT_IMG_LST = ""
+__C.TRAIN.PG.IMG_CACHE_PATH = ""
+__C.TRAIN.PG.IMG_CACHE_LST = ""
+__C.TRAIN.PG.IMG_CACHE_PREFIX = "PG_"
+__C.TRAIN.PG.IMG_CACHE_EXT = ".jpg"
+__C.TRAIN.PG.GIUDING_MODEL_PREFIX = ""
+__C.TRAIN.PG.GIUDING_MODEL_EPOCH = 0
+__C.TRAIN.PG.OUTPUT_GROUP = list() 
+__C.TRAIN.PG.CLASSIFIER_WEIGHTS = "" 
+__C.TRAIN.PG.TARGET_SHAPE = (8, 8)  # after down-sapmling 
+
 
 # ---------------------------------------------------------------------------- #
 # Deprecated options

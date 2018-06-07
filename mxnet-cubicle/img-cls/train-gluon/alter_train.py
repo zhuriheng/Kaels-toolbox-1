@@ -30,11 +30,12 @@ fhandler = None     # log to file
 def _init_():
     '''
     Alternately training multi-image-classification networks on mxnet
-    Update: 2018/05/28
+    Update: 2018-06-07 15:12:24 
     Author: @Northrend
     Contributor:
 
     Changelog:
+    2018/06/07      v1.2            modify config param name
     2018/05/28      v1.1            fix evaluation bug 
     2018/05/24      v1.0            basic functions 
 
@@ -86,16 +87,16 @@ def main():
     num_gpu = len(cfg.GPU_IDX)
     batch_size = num_gpu * cfg.BATCH_SIZE
     data_shape = cfg.INPUT_SHAPE
-    num_nets = cfg.ALTERNATE_NUM_NETS
-    num_classes = cfg.NUM_CLASSES
+    num_nets = cfg.ALT.NUM_NETS
+    num_classes = cfg.ALT.NUM_CLASSES
     assert len(num_classes)==num_nets, logger.error("Number of classes should be match with number of nets")
-    num_samples = cfg.NUM_SAMPLES
+    num_samples = cfg.ALT.NUM_SAMPLES
     nets = list()
 
     # instantiate metrics
     eval_metrics = inst_eval_metrics(cfg.METRICS) 
 
-    if cfg.ALTERNATE_PHASE == 1:
+    if cfg.ALT.PHASE == 1:
         logger.info("Alternately training phase 1:")
         # load master net
         sym, arg_params, aux_params = load_model(cfg.PRETRAINED_MODEL_PREFIX, cfg.PRETRAINED_MODEL_EPOCH, gluon_style=False)    # load mxnet style model
@@ -109,7 +110,7 @@ def main():
             net_branch = gluon_init_classifer(num_classes[i], ctx)
             nets.append(net_branch)
 
-    elif cfg.ALTERNATE_PHASE == 2:
+    elif cfg.ALT.PHASE == 2:
         logger.info("Alternately training phase 2:")
         # load master net
         sym, arg_params, aux_params = load_model(cfg.PRETRAINED_MODEL_PREFIX+'-master-phase-1', cfg.PRETRAINED_MODEL_EPOCH, gluon_style=True) 
@@ -136,11 +137,11 @@ def main():
         logger.info("-" * 80)
 
     # instantiate data iters
-    assert len(cfg.TRAIN_REC) == len(cfg.DEV_REC) == cfg.ALTERNATE_NUM_NETS, logger.error("Number of datasets and nets does not match")
+    assert len(cfg.ALT.TRAIN_RECS) == len(cfg.ALT.DEV_RECS) == num_nets, logger.error("Number of datasets and nets does not match")
     train_iters = ['dummy' for x in range(num_nets)]
     dev_iters = ['dummy' for x in range(num_nets)]
-    for i in range(cfg.ALTERNATE_NUM_NETS):
-        train_iters[i], dev_iters[i] = inst_iterators(cfg.TRAIN_REC[i], cfg.DEV_REC[i], batch_size=batch_size, data_shape=data_shape)
+    for i in range(num_nets):
+        train_iters[i], dev_iters[i] = inst_iterators(cfg.ALT.TRAIN_RECS[i], cfg.ALT.DEV_RECS[i], batch_size=batch_size, data_shape=data_shape)
 
     # set learning rates
     lrs, lr_schedulers = ['dummy' for x in range(num_nets+1)], ['dummy' for x in range(num_nets+1)]
@@ -149,7 +150,7 @@ def main():
         lrs[i+1], lr_schedulers[i+1] = inst_lr_scheduler(num_samples[i], batch_size, kv_store, begin_epoch=cfg.PRETRAINED_MODEL_EPOCH, base_lr=cfg.BASE_LR, lr_factor=cfg.LR_FACTOR, step_epochs=cfg.STEP_EPOCHS) 
     
     # alternately training
-    alternate_train_gluon(cfg.ALTERNATE_PHASE, nets, train_iters, dev_iters, num_samples, lrs, lr_schedulers, batch_size, eval_metrics, ctx, epochs=cfg.MAX_EPOCHS, weight_decays=cfg.WEIGHT_DECAY, momentums=cfg.MOMENTUM)
+    alternate_train_gluon(cfg.ALT.PHASE, nets, train_iters, dev_iters, num_samples, lrs, lr_schedulers, batch_size, eval_metrics, ctx, epochs=cfg.MAX_EPOCHS, weight_decays=cfg.ALT.WEIGHT_DECAYS, momentums=cfg.ALT.MOMENTUMS)
     
 
 if __name__ == '__main__':

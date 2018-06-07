@@ -131,8 +131,8 @@ def center_crop(img, crop_width):
 def multi_crop(img, crop_width, crop_number=3):
     _, height, width = img.shape
     # crop_list = list()
-    assert (height >= crop_width and width >= crop_width), 'crop size should be larger than image size!'
-    assert crop_width == min(height, width), 'crop size should be equal to short edge so far'
+    assert (height >= crop_width and width >= crop_width), 'image size should be larger than crop size!'
+    assert crop_width == min(height, width), 'crop size should be equal to short edge'
     if height > width:
         cent_crop = center_crop(img, crop_width)
         top_crop = img[:, :crop_width, :]
