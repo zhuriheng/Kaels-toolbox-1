@@ -59,6 +59,9 @@ def inst_iterators(data_train, data_dev, batch_size=1, data_shape=(3,224,224), r
         shuffle=cfg.TRAIN.SHUFFLE,
         rand_crop=cfg.TRAIN.RAND_CROP,
         rand_mirror=cfg.TRAIN.RAND_MIRROR,
+        max_rotate_angle=cfg.TRAIN.MAX_ROTATE_ANGLE,
+        max_aspect_ratio=cfg.TRAIN.MAX_ASPECT_RATIO,
+        max_shear_ratio=cfg.TRAIN.MAX_SHEAR_RATIO,
         mean_r=mean_r,
         mean_g=mean_g,
         mean_b=mean_b,
@@ -111,7 +114,7 @@ def load_model(model_prefix, load_epoch, gluon_style=False):
         arg, aux = dict(), dict()
         for k, v in save_dict.items():
             arg[k] = v
-    logging.info('Loaded model {}-{:0>4}.params'.format(model_prefix, load_epoch))
+    logging.info('Loaded model: {}-{:0>4}.params'.format(model_prefix, load_epoch))
 
     return sym, arg, aux
 
@@ -143,7 +146,7 @@ def load_model_gluon(symbol, arg_params, aux_params, ctx, layer_name=None):
 def save_model(model_prefix, rank=0):
     '''
     '''
-    assert model_prefix, logging.error('Valid model-prefix is needed to save model')
+    assert model_prefix, logging.error('Model-prefix is needed to save model')
     dst_dir = os.path.dirname(model_prefix)
     if not os.path.isdir(dst_dir):
         os.mkdir(dst_dir)

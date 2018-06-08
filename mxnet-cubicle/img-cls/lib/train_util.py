@@ -10,7 +10,7 @@ import mxnet as mx
 import numpy as np
 from operator_py import svm_metric
 from config import cfg
-from io_hybrid import check_dir
+from io_hybrid import check_dir, save_model
 
 
 def _check_const_params(pd_before, pd_after):
@@ -259,3 +259,61 @@ def alternate_train_gluon(phase, nets, train_iters, dev_iters, num_samples, lrs,
     else:
         pass
 
+
+def generic_train(train_iter, dev_iter, symbol, arg_params, aux_params, num_samples, batch_size, begin_epoch):
+    '''
+    '''
+    # initialization
+    kv = mx.kvstore.create(cfg.TRAIN.KV_STORE)
+    checkpoint = save_model(cfg.TRAIN.OUTPUT_MODEL_PREFIX, kv.rank)
+    devices = [mx.gpu(x) for x in cfg.TRAIN.GPU_IDX] if cfg.TRAIN.USE_GPU else mx.cpu() 
+    label_names = ['softmax_label'] if cfg.TRAIN.USE_SOFTMAX else ['svm_label']
+    lr, lr_scheduler = inst_lr_scheduler(num_samples, batch_size, kv, begin_epoch=begin_epoch, base_lr=cfg.TRAIN.BASE_LR, lr_factor=cfg.TRAIN.LR_FACTOR, step_epochs=cfg.TRAIN.STEP_EPOCHS) 
+    optimizer_params = {'learning_rate': lr,
+                        'momentum': cfg.TRAIN.MOMENTUM,
+                        'wd': cfg.TRAIN.WEIGHT_DECAY, 
+                        'lr_scheduler': lr_scheduler}
+    batch_end_callbacks = get_batch_end_callback(batch_size, display_lr=cfg.TRAIN.LOG_LR, display_batch=cfg.TRAIN.LOG_INTERVAL) 
+    if "top_k_acc" in cfg.TRAIN.METRICS:
+        metrics = inst_eval_metrics(cfg.TRAIN.METRICS, top_k=cfg.TRAIN.METRICS_TOP_K_ACC) 
+    else:
+        metrics = inst_eval_metrics(cfg.TRAIN.METRICS) 
+
+    # bind module 
+    if cfg.TRAIN.FT.FREEZE_WEIGHTS: 
+        # fix all weights except for fc layers
+        freeze_list = [k for k in arg_params if 'fc' not in k] 
+        mod = mx.mod.Module(symbol=symbol, context=devices, label_names=label_names, fixed_param_names=freeze_list)
+    else:
+        mod = mx.mod.Module(symbol=symbol, context=devices, label_names=label_names)
+    mod.bind(data_shapes=train_iter.provide_data, label_shapes=train_iter.provide_label)
+
+    # init weights
+    if cfg.TRAIN.XAVIER_INIT:
+        mod.init_params(initializer=mx.init.Xavier(rnd_type='gaussian', factor_type="in", magnitude=2))
+    else:
+        mod.init_params(initializer=mx.init.Normal())
+
+    # set weights 
+    if cfg.TRAIN.FINETUNE:
+        # replace all parameters except for the last fully-connected layer with pre-trained model
+        mod.set_params(arg_params, aux_params, allow_missing=True, allow_extra=True)
+    elif cfg.TRAIN.RESUME:
+        mod.set_params(arg_params, aux_params, allow_missing=False, allow_extra=False)
+    else:
+        pass
+    
+    # fit 
+    mod.fit(train_iter, 
+            dev_iter,
+            eval_metric=metrics,
+            begin_epoch=begin_epoch,
+            num_epoch=cfg.TRAIN.MAX_EPOCHS,
+            kvstore=kv,
+            optimizer=cfg.TRAIN.OPTIMIZER,
+            optimizer_params=optimizer_params,
+            batch_end_callback=batch_end_callbacks,
+            epoch_end_callback=checkpoint,
+            allow_missing=True)
+
+    return mod.score(dev_iter, metrics)
