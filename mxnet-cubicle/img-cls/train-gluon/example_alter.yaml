@@ -4,12 +4,12 @@ TRAIN:
     OUTPUT_MODEL_PREFIX: /path/to/model/with/prefix
 
     # training
-    PROCESS_THREAD: 16  # number of thread to pre-process recordio files 
-    GPU_IDX: [0, 1] # use gpu 0 and 1
-    LOG_NET_PARAMS: True    # print params of each net 
-    MAX_EPOCHS: 100  
-    METRICS: [acc, ce]  # callback accuracy and cross-entropy loss
     BATCH_SIZE: 16  # mini-batch size per gpu
+    GPU_IDX: [0, 1] # use gpu 0 and 1
+    LOG_NET_PARAMS: True    # print params of each net
+    MAX_EPOCHS: 100
+    METRICS: [acc, ce]  # callback accuracy and cross-entropy loss
+    PROCESS_THREAD: 16  # number of thread to pre-process recordio files
     
     # learning hyper params
     BASE_LR: 0.2

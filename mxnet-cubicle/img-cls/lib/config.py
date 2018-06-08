@@ -134,7 +134,7 @@ __C.TRAIN.METRICS_TOP_K_ACC = 1
 __C.TRAIN.PRE_EVALUATION = False 
 __C.TRAIN.LOG_INTERVAL = 40  
 __C.TRAIN.LOG_NET_PARAMS = False 
-__C.TRAIN.LOG_LR = True 
+__C.TRAIN.LOG_LR = False 
 __C.TRAIN.TEST_IO_MODE = False 
 
 # ---- network hyper params ----

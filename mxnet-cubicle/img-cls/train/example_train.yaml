@@ -6,18 +6,18 @@ TRAIN:
     DEV_REC: /path/to/dev.rec 
 
     # training
-    PROCESS_THREAD: 4  # number of thread to pre-process recordio files 
-    GPU_IDX: [0, 1] # use gpu 0 and 1
-    TEST_IO_MODE: False 
-    LOG_INTERVAL: 80 
-    LOG_NET_PARAMS: True    # print params of each net 
-    MAX_EPOCHS: 100  
-    METRICS: [acc, ce]  # callback accuracy and cross-entropy loss
     BATCH_SIZE: 64  # mini-batch size per gpu
-    NUM_CLASSES: 1000 
-    NUM_SAMPLES: 10000 
+    GPU_IDX: [0, 1] # use gpu 0 and 1
+    LOG_INTERVAL: 80
+    LOG_NET_PARAMS: True    # print params of each net
+    MAX_EPOCHS: 100
+    METRICS: [acc, ce]  # callback accuracy and cross-entropy loss
+    NUM_CLASSES: 1000
+    NUM_SAMPLES: 10000
+    PROCESS_THREAD: 4  # number of thread to pre-process recordio files
     RAND_CROP: True
     RAND_MIRROR: True
+    TEST_IO_MODE: False
     
     # learning hyper params
     BASE_LR: 0.1
