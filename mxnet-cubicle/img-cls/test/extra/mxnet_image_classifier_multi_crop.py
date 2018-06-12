@@ -115,7 +115,7 @@ def _index_to_classname(label_file, classname_position=1):
     f_label = open(label_file, 'r')
     label_list = list()
     for buff in f_label:
-        label_list.append(buff.strip().split()[classname_position])
+        label_list.append(buff.strip().split(',')[classname_position])
     return label_list
 
 
