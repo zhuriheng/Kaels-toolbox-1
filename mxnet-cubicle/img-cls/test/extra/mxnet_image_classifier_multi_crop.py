@@ -121,7 +121,7 @@ def _index_to_classname(label_file, classname_position=1):
 
 def center_crop(img, crop_width):
     _, height, width = img.shape
-    assert (height >= crop_width and width >= crop_width), 'crop size should be larger than image size!'
+    assert (height >= crop_width and width >= crop_width), 'crop size should be smaller than image size!'
     top = int(float(height) / 2 - float(crop_width) / 2)
     left = int(float(width) / 2 - float(crop_width) / 2)
     crop = img[:, top:(top + crop_width), left:(left + crop_width)]
@@ -131,8 +131,8 @@ def center_crop(img, crop_width):
 def multi_crop(img, crop_width, crop_number=3):
     _, height, width = img.shape
     # crop_list = list()
-    assert (height >= crop_width and width >= crop_width), 'crop size should be larger than image size!'
-    assert crop_width == min(height, width), 'crop size should be equal to short edge so far'
+    assert (height >= crop_width and width >= crop_width), 'image size should be larger than crop size!'
+    assert crop_width == min(height, width), 'crop size should be equal to short edge'
     if height > width:
         cent_crop = center_crop(img, crop_width)
         top_crop = img[:, :crop_width, :]
@@ -221,7 +221,7 @@ def net_single_infer(model, list_image_path):
         img = cv2.cvtColor(img_read, cv2.COLOR_BGR2RGB)
         img = img.astype(float)
         # print(img.shape)
-        if args['--multi-crop']: 
+        if args['--multi-crop'] or args['--center-crop']: 
             height, width, _ = img.shape
             if height > width:
                 img = cv2.resize(img, (resize_width, int(float(height)*resize_width/width)))

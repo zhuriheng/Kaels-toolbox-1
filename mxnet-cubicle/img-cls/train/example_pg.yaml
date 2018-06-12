@@ -1,0 +1,18 @@
+TRAIN:
+    # path
+    LOG_PATH: tmp.log 
+
+    # training
+    GPU_IDX: [1] # 
+    RESIZE_RANGE: (320, 1280)
+
+    # precision-guided
+    PG:
+        LOG_GEN_GUIDER: True
+        INPUT_IMG_LST: /workspace/dataset/blademaster/pg_cache/Lists/train_20180604_lite.lst
+        IMG_CACHE_PATH: /workspace/dataset/blademaster/pg_cache/Image_320_lite/
+        IMG_CACHE_LST: /workspace/dataset/blademaster/pg_cache/Lists/train_20180604_lite_PG_320.lst
+        GIUDING_MODEL_PREFIX: /workspace/blademaster/model/v28_se_resnext_50/bm-v28
+        GIUDING_MODEL_EPOCH: 16
+        OUTPUT_GROUP: [stage4_unit3_conv3_output, softmax_output]
+        CLASSIFIER_WEIGHTS: fc-3_weight
