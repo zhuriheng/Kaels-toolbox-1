@@ -100,7 +100,7 @@ def inst_iterators(data_train, data_dev, batch_size=1, data_shape=(3,224,224), r
     return train, val
 
 
-def np_img_preprocessing(img, as_float=True, keep_aspect_ratio=False, **kwargs):
+def np_img_preprocessing(img, as_float=True, **kwargs):
     '''
     '''
     assert isinstance(img, np.ndarray), logging.error("Input images should be type of numpy.ndarray")
@@ -108,9 +108,9 @@ def np_img_preprocessing(img, as_float=True, keep_aspect_ratio=False, **kwargs):
     if as_float:
         img = img.astype(float)
     # reshape
-    if 'resize_w_h' in kwargs and not keep_aspect_ratio:
+    if 'resize_w_h' in kwargs and not kwargs['keep_aspect_ratio']:
         img = cv2.resize(img, (kwargs['resize_w_h'][0], kwargs['resize_w_h'][1]))
-    if 'resize_min_max' in kwargs and keep_aspect_ratio: 
+    if 'resize_min_max' in kwargs and kwargs['keep_aspect_ratio']: 
         ratio = float(max(img.shape[:2]))/min(img.shape[:2])
         min_len, max_len = kwargs['resize_min_max']
         if min_len*ratio <= max_len or max_len == 0:    # resize by min
@@ -162,7 +162,7 @@ def np_img_multi_crop(img, crop_width, crop_number=3):
             bottom_crop_2 = img[:, (-crop_width - stride):-stride, :]
             return [top_crop, top_crop_2, cent_crop, bottom_crop_2, bottom_crop]
     elif width > height:
-        cent_crop = center_crop(img, crop_width)
+        cent_crop = np_img_center_crop(img, crop_width)
         left_crop = img[:, :, :crop_width]
         right_crop = img[:, :, -crop_width:]
         if crop_number == 3:

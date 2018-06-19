@@ -40,11 +40,12 @@ fhandler = None     # log to file
 def _init_():
     '''
     Inference script for image-classification task on mxnet
-    Update: 2018-06-11 16:18:43 
+    Update: 2018-06-19 16:56:28
     Author: @Northrend
     Contributor: 
 
     Change log:
+    2018/06/19  v3.1                support multi(3 for now) crop
     2018/06/11  v3.0                code-refactoring 
     2018/05/31  v2.6                support log file name with parent path 
     2018/04/18  v2.5                support print foward fps
@@ -92,10 +93,12 @@ def _init_():
 @_time_it.time_it
 def main():
     logger.info('Configuration:')
-    logger.info(pprint.pformat(_))
+    logger.info(pprint.pformat(cfg))
 
     # init
     devices = [mx.gpu(x) for x in cfg.GPU_IDX]
+    if cfg.MULTI_CROP:
+        assert len(devices)==1, logger.error('Only single gpu mode is supported under multi-crop testintg') 
     batch_size_per_gpu = cfg.MULTI_CROP_NUM if cfg.MULTI_CROP else cfg.BATCH_SIZE
     batch_size = len(devices)*batch_size_per_gpu
     input_shape = cfg.INPUT_SHAPE
@@ -105,8 +108,10 @@ def main():
     image_list, _label_list = load_image_list(cfg.INPUT_IMG_LST)
     kwargs = dict()
     if cfg.RESIZE_KEEP_ASPECT_RATIO:
+        kwargs['keep_aspect_ratio'] = True
         kwargs['resize_min_max'] = cfg.RESIZE_MIN_MAX
     else:
+        kwargs['keep_aspect_ratio'] = False 
         kwargs['resize_w_h'] = cfg.RESIZE_WH
     kwargs['mean_rgb'] = cfg.MEAN_RGB
     kwargs['std_rgb'] = cfg.STD_RGB
