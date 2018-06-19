@@ -10,6 +10,13 @@ import numpy as np
 from config import cfg
 
 
+class empty_image(Exception):
+    '''
+    catch empty image error
+    '''
+    pass
+
+
 def check_dir(path):
     '''
     '''
@@ -93,6 +100,83 @@ def inst_iterators(data_train, data_dev, batch_size=1, data_shape=(3,224,224), r
     return train, val
 
 
+def np_img_preprocessing(img, as_float=True, keep_aspect_ratio=False, **kwargs):
+    '''
+    '''
+    assert isinstance(img, np.ndarray), logging.error("Input images should be type of numpy.ndarray")
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    if as_float:
+        img = img.astype(float)
+    # reshape
+    if 'resize_w_h' in kwargs and not keep_aspect_ratio:
+        img = cv2.resize(img, (kwargs['resize_w_h'][0], kwargs['resize_w_h'][1]))
+    if 'resize_min_max' in kwargs and keep_aspect_ratio: 
+        ratio = float(max(img.shape[:2]))/min(img.shape[:2])
+        min_len, max_len = kwargs['resize_min_max']
+        if min_len*ratio <= max_len or max_len == 0:    # resize by min
+            if img.shape[0] > img.shape[1]:     # h > w
+                img = cv2.resize(img, (min_len, int(min_len*ratio)))
+            elif img.shape[0] <= img.shape[1]:   # h <= w
+                img = cv2.resize(img, (int(min_len*ratio), min_len)) 
+        elif min_len*ratio > max_len:   # resize by max
+            if img.shape[0] > img.shape[1]:     # h > w
+                img = cv2.resize(img, (int(max_len/ratio), max_len))
+            elif img.shape[0] <= img.shape[1]:   # h <= w
+                img = cv2.resize(img, (max_len, int(max_len/ratio))) 
+    # normalization
+    if 'mean_rgb' in kwargs:
+        img -= kwargs['mean_rgb'][:]
+    if 'std_rgb' in kwargs:
+        img /= kwargs['std_rgb'][:] 
+    # (h,w,c) => (c,h,w)
+    img = np.swapaxes(img, 0, 2)
+    img = np.swapaxes(img, 1, 2)
+    return img
+
+
+def np_img_center_crop(img, crop_width):
+    '''
+    '''
+    _, height, width = img.shape    # (c,h,w)
+    assert (height >= crop_width and width >= crop_width), logging.error('crop size should be larger than image size')
+    top = int(float(height) / 2 - float(crop_width) / 2)
+    left = int(float(width) / 2 - float(crop_width) / 2)
+    crop = img[:, top:(top + crop_width), left:(left + crop_width)]
+    return crop
+
+
+def np_img_multi_crop(img, crop_width, crop_number=3):
+    _, height, width = img.shape
+    assert crop_number in [3,5], logging.error('crop number should be 3 or 5 for now')
+    assert (height >= crop_width and width >= crop_width), logging.error('image size should be larger than crop size')
+    assert crop_width == min(height, width), logging.error('crop size should be equal to short edge for now')
+    if height > width:
+        cent_crop = np_img_center_crop(img, crop_width)
+        top_crop = img[:, :crop_width, :]
+        bottom_crop = img[:, -crop_width:, :]
+        if crop_number == 3:
+            return [top_crop, cent_crop, bottom_crop]
+        elif crop_number == 5:
+            stride = int((float(height)-float(crop_width))/4)
+            top_crop_2 = img[:, stride:(stride + crop_width), :]
+            bottom_crop_2 = img[:, (-crop_width - stride):-stride, :]
+            return [top_crop, top_crop_2, cent_crop, bottom_crop_2, bottom_crop]
+    elif width > height:
+        cent_crop = center_crop(img, crop_width)
+        left_crop = img[:, :, :crop_width]
+        right_crop = img[:, :, -crop_width:]
+        if crop_number == 3:
+            return [left_crop, cent_crop, right_crop]
+        elif crop_number == 5:
+            stride = int((float(width)-float(crop_width))/4)
+            left_crop_2 = img[:, :, stride:(stride + crop_width)]
+            right_crop_2 = img[:, :, (-crop_width - stride):-stride]
+            return [left_crop, left_crop_2, cent_crop, right_crop_2, right_crop]
+    else:
+        logging.info('input image gets 1:1 aspect ratio, return {} crops with exactly the same pixels'.format(crop_number))
+        return[img for x in range(crop_number)]
+
+
 def load_model(model_prefix, load_epoch, gluon_style=False):
     '''
     Load existing model
@@ -161,34 +245,45 @@ def save_model_gluon(net, model_prefix, rank=0):
     logging.info('Saved checkpoint to \"{}-{:0>4}.params\"'.format(model_prefix, rank))
     return 0
 
+def load_image_list(image_list_file):
+    '''
+    read image path file with syntax as follows(label is trivial):
+    /path/to/image1.jpg (label)
+    /path/to/image2.jpg (label)
+    ...
+    :params:
 
-def np_img_preprocessing(img, as_float=True, keep_aspect_ratio=False, **kwargs):
-    assert isinstance(img, np.ndarray), logging.error("Input images should be type of numpy.ndarray")
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    if as_float:
-        img = img.astype(float)
-    # reshape
-    if 'resize_w_h' in kwargs and not keep_aspect_ratio:
-        img = cv2.resize(img, (kwargs['resize_w_h'][0], kwargs['resize_w_h'][1]))
-    if 'resize_min_max' in kwargs and keep_aspect_ratio: 
-        ratio = float(max(img.shape[:2]))/min(img.shape[:2])
-        min_len, max_len = kwargs['resize_min_max']
-        if min_len*ratio <= max_len:    # resize by min
-            if img.shape[0] > img.shape[1]:     # h > w
-                img = cv2.resize(img, (min_len, int(min_len*ratio)))
-            elif img.shape[0] <= img.shape[1]:   # h <= w
-                img = cv2.resize(img, (int(min_len*ratio), min_len)) 
-        elif min_len*ratio > max_len:   # resize by max
-            if img.shape[0] > img.shape[1]:     # h > w
-                img = cv2.resize(img, (int(max_len/ratio), max_len))
-            elif img.shape[0] <= img.shape[1]:   # h <= w
-                img = cv2.resize(img, (max_len, int(max_len/ratio))) 
-    # normalization
-    if 'mean_rgb' in kwargs:
-        img -= kwargs['mean_rgb'][:]
-    if 'std_rgb' in kwargs:
-        img /= kwargs['std_rgb'][:] 
-    # (h,w,c) => (c,h,w)
-    img = np.swapaxes(img, 0, 2)
-    img = np.swapaxes(img, 1, 2)
-    return img
+    :return:
+
+    '''
+    image_list = list()
+    label_list = list()
+    with open(image_list_file, 'r') as f:
+        for buff in f:
+            if len(buff.strip().split()) == 1:   # image path only
+                image_list.append(buff.strip())
+            elif len(buff.strip().split()) == 2:    # with labels
+                image_list.append(buff.strip().split()[0])
+                label_list.append(buff.strip().split()[1])
+            else:
+                logging.error("Image list syntax error!")
+    return image_list, label_list
+
+
+def load_category_list(cat_file, name_position=1, split=None):
+    '''
+    load category file
+    file syntax:
+    0 category_name
+    1 category_name 
+    :params:
+    :return:
+    '''
+    tup_list = list()
+    with open(cat_file,'r') as f:
+        for buff in f.readlines():
+            tup_list.append(buff.strip().split(split)) 
+    category_list = [tup[name_position] for tup in sorted(tup_list, key=lambda x:x[1-name_position])]
+    logging.debug(category_list)
+    return category_list 
+    

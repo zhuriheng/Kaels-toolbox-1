@@ -17,15 +17,15 @@ def main():
     '''
     params: /path/to/input/csv /path/to/output/files /path/to/image/files /path/to/category/file/ [ext,optional]jpg
     '''
+    coordinate_scale = False
     input_csv = sys.argv[1]
     output_json = os.path.join(sys.argv[2],os.path.splitext(os.path.basename(input_csv))[0] + '.json') 
     img_path = sys.argv[3]
     cat_path = sys.argv[4]
-    # if len(sys.argv) == 6:
-    #     ext = '.'+sys.argv[5]
-    # else:
-    #     ext = str() 
-    ext = '.jpg'
+    if len(sys.argv) == 6:
+        ext = '.'+sys.argv[5]
+    else:
+        ext = str() 
     err_lst = list()
     out_of_size_lst = list()
 
@@ -43,7 +43,7 @@ def main():
     result['licenses'] = list()
     result['categories'] = list()
 
-    result['info'] = {"year":"2018", "version":"v4", "description":"openimage v4 bounding-box annotations", "contributor":"Northrend@github.com","url":None, "date_created":"2018-05-04"}
+    result['info'] = {"year":"2018", "version":"v1", "description":"dummy datasets bounding-box annotations", "contributor":"Northrend@github.com","url":None, "date_created":"2018-06-14"}
     
     _ = dict() 
     count = 0
@@ -78,7 +78,10 @@ def main():
         tmp['category_id'] = cat.index(item['LabelName']) + 1    # start from 1
         tmp['segmentation'] = list() 
         # bbox = [x,y,w,h]
-        bbox = [float(item['XMin'])*width, float(item['YMin'])*height, (float(item['XMax'])-float(item['XMin']))*width, (float(item['YMax'])-float(item['YMin']))*height]
+        if coordinate_scale:
+            bbox = [float(item['XMin'])*width, float(item['YMin'])*height, (float(item['XMax'])-float(item['XMin']))*width, (float(item['YMax'])-float(item['YMin']))*height]
+        else:
+            bbox = [int(item['XMin']), int(item['YMin']), int(item['XMax'])-int(item['XMin']), int(item['YMax'])-int(item['YMin'])]
         tmp['bbox'] = [float('{:.2f}'.format(x)) for x in bbox]
         tmp['area'] = float('{:.2f}'.format(tmp['bbox'][2]*tmp['bbox'][3]))
         check = check_bounding_box(tmp['bbox'], width, height, item['ImageID'])

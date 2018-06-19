@@ -5,6 +5,10 @@ import struct
 import magic
 
 
+class UnknownImageFormat(Exception):
+    pass
+
+
 def get_image_size_magic(img_path):
     '''
     get image width and height without loading image file into memory

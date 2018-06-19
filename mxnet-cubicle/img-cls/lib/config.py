@@ -117,12 +117,13 @@ __C.DUMMY.ENTRYPOINT= "Configuration Entrypoint"
 # ---------------------------------------------------------------------------- #
 __C.TRAIN = AttrDict()
 
-# ---- training hyper params ----
-__C.TRAIN.OUTPUT_MODEL_PREFIX = ""
-__C.TRAIN.SAVE_INTERVAL = 1 # save model every n epochs
 __C.TRAIN.LOG_PATH = ""
 __C.TRAIN.LOG_LEVEL = "INFO"  # INFO, DEBUG, WARNING, ERROR, CRITICAL
 __C.TRAIN.LOG_MODE = "w"  
+
+# ---- training hyper params ----
+__C.TRAIN.OUTPUT_MODEL_PREFIX = ""
+__C.TRAIN.SAVE_INTERVAL = 1 # save model every n epochs
 __C.TRAIN.KV_STORE = b"device" 
 __C.TRAIN.USE_GPU = True 
 __C.TRAIN.GPU_IDX = [0]
@@ -222,6 +223,42 @@ __C.TRAIN.PG.OUTPUT_GROUP = list()
 __C.TRAIN.PG.CLASSIFIER_WEIGHTS = "" 
 __C.TRAIN.PG.TARGET_SHAPE = (8, 8)  # after down-sapmling 
 
+
+# ---------------------------------------------------------------------------- #
+# Tesing options
+# ---------------------------------------------------------------------------- #
+__C.TEST = AttrDict()
+
+__C.TEST.LOG_PATH = ""
+__C.TEST.LOG_LEVEL = "INFO"  # INFO, DEBUG, WARNING, ERROR, CRITICAL
+__C.TEST.LOG_MODE = "w"  
+
+# ---- test setting ----
+__C.TEST.INPUT_IMG_LST = ""
+__C.TEST.INPUT_CAT_FILE = ""
+__C.TEST.OUTPUT_JSON_PATH = ""
+__C.TEST.MODEL_PREFIX = ""
+__C.TEST.MODEL_EPOCH = 0
+__C.TEST.KV_STORE = b"device" 
+__C.TEST.USE_GPU = True 
+__C.TEST.GPU_IDX = [0]     # only single gpu supported for now
+__C.TEST.BATCH_SIZE = 1 
+__C.TEST.INPUT_SHAPE = (3, 224, 224)
+__C.TEST.RESIZE_KEEP_ASPECT_RATIO = False
+__C.TEST.RESIZE_WH = (224, 224) 
+__C.TEST.RESIZE_MIN_MAX = (256, 0) 
+__C.TEST.MEAN_RGB = [123.68, 116.779, 103.939] 
+__C.TEST.STD_RGB = [58.395, 57.12, 57.375] 
+__C.TEST.CENTER_CROP = False
+__C.TEST.MULTI_CROP = False
+__C.TEST.MULTI_CROP_NUM = 3
+__C.TEST.HORIZENTAL_FLIP = False
+__C.TEST.USE_BASENAME = True
+__C.TEST.FNAME_PARENT_LEVEL = 1 
+__C.TEST.TOP_K = 1 
+__C.TEST.LOG_ALL_CONFIDENCE = True
+__C.TEST.CAT_NAME_POS = 1
+__C.TEST.CAT_FILE_SPLIT = " "
 
 # ---------------------------------------------------------------------------- #
 # Deprecated options

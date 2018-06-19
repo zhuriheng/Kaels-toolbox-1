@@ -60,7 +60,7 @@ def _init_():
     2017/08/09  v2.0                apply logging module
     2017/08/08  v1.5                support scratch-training and more networks
     2017/07/24  v1.4                support customized input shape
-    2017/07/13	v1.3	            fix lr descend bug
+    2017/07/13  v1.3                fix lr descend bug
     2017/05/19  v1.2                support multi-metrics during training
                                     support threshold and save-json options
                                     modify script name from mxnet_train_finetune to mxnet_train
