@@ -25,7 +25,7 @@ cur_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(cur_path,'../lib'))
 from io_hybrid import load_model, load_image_list, load_category_list 
 from net_util import init_forward_net 
-from test_util import multi_gpu_test 
+from test_util import multi_gpu_test, single_image_test 
 from config import merge_cfg_from_file
 from config import cfg as _
 cfg = _.TEST
@@ -60,7 +60,7 @@ def _init_():
     2017/06/20  v1.0                basic functions
 
     Usage:
-        mxnet_image_classifier.py   <input-cfg>
+        mxnet_image_classifier.py   <input-cfg> [--single-img=str]
         mxnet_image_classifier.py   -v | --version
         mxnet_image_classifier.py   -h | --help
 
@@ -70,6 +70,9 @@ def _init_():
     Options:
         -h --help                   show this help screen
         -v --version                show current version
+        -------------------------------------------------------
+        --single-img=str            give path to one image file
+                                    to use single image testing
     '''
     # merge configuration
     merge_cfg_from_file(args["<input-cfg>"])
@@ -105,7 +108,10 @@ def main():
     center_crop = cfg.CENTER_CROP
     multi_crop_num = cfg.MULTI_CROP_NUM if cfg.MULTI_CROP else None 
     h_flip = cfg.HORIZENTAL_FLIP
-    image_list, _label_list = load_image_list(cfg.INPUT_IMG_LST)
+    if args['--single-img']:
+        image_path = args['--single-img']
+    else:
+        image_list, _label_list = load_image_list(cfg.INPUT_IMG_LST)
     kwargs = dict()
     if cfg.RESIZE_KEEP_ASPECT_RATIO:
         kwargs['keep_aspect_ratio'] = True
@@ -119,10 +125,17 @@ def main():
     symbol, arg_params, aux_params = load_model(cfg.MODEL_PREFIX, cfg.MODEL_EPOCH)
     model = init_forward_net(symbol, arg_params, aux_params, batch_size, input_shape, ctx=devices, redefine_output_group=None, allow_missing=True, allow_extra=False)
     # test
-    result = multi_gpu_test(model, image_list, categories, batch_size, input_shape, kwargs, center_crop=center_crop, multi_crop=multi_crop_num, h_flip=h_flip, img_prefix=None, base_name=True)
-    # write json file
-    with open(cfg.OUTPUT_JSON_PATH,'w') as f:
-        json.dump(result, f, indent=2)
+    if args['--single-img']:
+        logger.info('Single image testing mode...')
+        result = single_image_test(model, image_path, categories, input_shape, kwargs, center_crop=center_crop, multi_crop=multi_crop_num, h_flip=h_flip)
+        logger.info('Result:\n{}'.format(pprint.pformat(result)))
+    else:
+        logger.info('List of images testing mode...')
+        result = multi_gpu_test(model, image_list, categories, batch_size, input_shape, kwargs, center_crop=center_crop, multi_crop=multi_crop_num, h_flip=h_flip, img_prefix=None, base_name=True)
+        # write json file
+        logger.info('Writing result into json file: {}'.format(cfg.OUTPUT_JSON_PATH))
+        with open(cfg.OUTPUT_JSON_PATH,'w') as f:
+            json.dump(result, f, indent=2)
 
 
 if __name__ == "__main__":

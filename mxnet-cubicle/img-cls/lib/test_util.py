@@ -125,3 +125,60 @@ def multi_gpu_test(model, img_list, categories, batch_size, input_shape, img_pre
     logging.info("Average time per image(with preprocessing)={:.3f}s".format(timer/img_num))
     return result
 
+
+def single_image_test(model, image_path, categories, input_shape, img_preproc_kwargs, center_crop=False, multi_crop=False, h_flip=False):
+    '''
+    '''
+    Batch = namedtuple('Batch', ['data'])
+    k = cfg.TEST.TOP_K
+    level = cfg.TEST.FNAME_PARENT_LEVEL 
+    multi_crop_ave = True if multi_crop else False
+    try:
+        img_read = cv2.imread(image_path)
+        if np.shape(img_read) == tuple():
+            raise empty_image
+    except:
+        logging.error('Reading image failed')
+        return None
+    img_tmp = np_img_preprocessing(img_read, **img_preproc_kwargs)
+    logging.info('Shape of image after preprocessing: {}'.format(img_tmp.shape))
+
+    # input data batch 
+    if center_crop:
+        img_ccr = np_img_center_crop(img_tmp, input_shape[1]) 
+        img_batch = mx.nd.array(img_ccr[np.newaxis, :])
+    elif multi_crop:
+        img_batch = mx.nd.array(np.zeros((multi_crop, input_shape[0], input_shape[1], input_shape[2])))
+        img_crs = np_img_multi_crop(img_tmp, input_shape[1], crop_number=multi_crop)
+        for idx_crop,crop in enumerate(img_crs):
+            img_batch[idx_crop] = mx.nd.array(crop[np.newaxis, :])
+    else:
+        img_batch = mx.nd.array(img_tmp[np.newaxis, :])
+    logging.info('Shape of data fed to model: {}'.format(img_batch.shape))
+
+    # forward
+    model.forward(Batch([img_batch]))
+    output_prob_batch = model.get_outputs()[0].asnumpy()
+    if multi_crop_ave:
+        # 3x3:[[cls_0],[cls_1],[cls_2]] -> 3x1:[cls_0_avg,cls_1_avg,cls_2_avg]
+        output_prob = np.average(output_prob_batch,axis=0)
+    else:
+        output_prob = output_prob_batch[0]
+    
+    # sort index-list and create sorted rate-list
+    index_list = output_prob.argsort()
+    rate_list = output_prob[index_list]
+    _index_list = index_list.tolist()[-k:][::-1]
+    _rate_list = rate_list.tolist()[-k:][::-1]
+
+    # write result dictionary
+    result = dict()
+    result['File Name'] = os.path.basename(image_path)
+
+    # get top-k indices and revert to top-1 at first
+    result['Top-{} Index'.format(k)] = _index_list
+    result['Top-{} Class'.format(k)] = [categories[int(x)] for x in _index_list]
+
+    # use str to avoid JSON serializable error
+    result['Confidence'] = [str(x) for x in list(output_prob)] if cfg.TEST.LOG_ALL_CONFIDENCE else [str(x) for x in _rate_list]
+    return result
