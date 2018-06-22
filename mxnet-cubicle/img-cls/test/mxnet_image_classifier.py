@@ -25,7 +25,7 @@ cur_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(cur_path,'../lib'))
 from io_hybrid import load_model, load_image_list, load_category_list 
 from net_util import init_forward_net 
-from test_util import multi_gpu_test, single_image_test 
+from test_util import test_wrapper 
 from config import merge_cfg_from_file
 from config import cfg as _
 cfg = _.TEST
@@ -40,11 +40,12 @@ fhandler = None     # log to file
 def _init_():
     '''
     Inference script for image-classification task on mxnet
-    Update: 2018-06-19 16:56:28
+    Update: 2018-06-22 12:09:37 
     Author: @Northrend
     Contributor: 
 
     Change log:
+    2018/06/22  v3.2                support mutable images testing
     2018/06/19  v3.1                support multi(3 for now) crop
     2018/06/11  v3.0                code-refactoring 
     2018/05/31  v2.6                support log file name with parent path 
@@ -127,11 +128,11 @@ def main():
     # test
     if args['--single-img']:
         logger.info('Single image testing mode...')
-        result = single_image_test(model, image_path, categories, input_shape, kwargs, center_crop=center_crop, multi_crop=multi_crop_num, h_flip=h_flip)
+        result = test_wrapper(model, image_path, categories, batch_size, input_shape, kwargs, center_crop=center_crop, multi_crop=multi_crop_num, h_flip=h_flip, single_img_test=True, mutable_img_test=cfg.MUTABLE_IMAGES_TEST)
         logger.info('Result:\n{}'.format(pprint.pformat(result)))
     else:
         logger.info('List of images testing mode...')
-        result = multi_gpu_test(model, image_list, categories, batch_size, input_shape, kwargs, center_crop=center_crop, multi_crop=multi_crop_num, h_flip=h_flip, img_prefix=None, base_name=True)
+        result = test_wrapper(model, image_list, categories, batch_size, input_shape, kwargs, center_crop=center_crop, multi_crop=multi_crop_num, h_flip=h_flip, img_prefix=None, base_name=True, single_img_test=False, mutable_img_test=cfg.MUTABLE_IMAGES_TEST)
         # write json file
         logger.info('Writing result into json file: {}'.format(cfg.OUTPUT_JSON_PATH))
         with open(cfg.OUTPUT_JSON_PATH,'w') as f:

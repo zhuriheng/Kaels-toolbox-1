@@ -61,7 +61,7 @@ def infer_one_batch(model, categories, data_batch, img_list, base_name=True, mul
     return results_one_batch
     
 
-def multi_gpu_test(model, img_list, categories, batch_size, input_shape, img_preproc_kwargs, center_crop=False, multi_crop=None, h_flip=False, img_prefix=None, base_name=True):
+def generic_multi_gpu_test(model, img_list, categories, batch_size, input_shape, img_preproc_kwargs, center_crop=False, multi_crop=None, h_flip=False, img_prefix=None, base_name=True):
     '''
     '''
     timer = 0
@@ -140,6 +140,7 @@ def single_image_test(model, image_path, categories, input_shape, img_preproc_kw
     except:
         logging.error('Reading image failed')
         return None
+    logging.info('Shape of image after read-in: {}'.format(img_read.shape))
     img_tmp = np_img_preprocessing(img_read, **img_preproc_kwargs)
     logging.info('Shape of image after preprocessing: {}'.format(img_tmp.shape))
 
@@ -182,3 +183,30 @@ def single_image_test(model, image_path, categories, input_shape, img_preproc_kw
     # use str to avoid JSON serializable error
     result['Confidence'] = [str(x) for x in list(output_prob)] if cfg.TEST.LOG_ALL_CONFIDENCE else [str(x) for x in _rate_list]
     return result
+
+
+def mutable_images_test(model, image_list, categories, input_shape, img_preproc_kwargs, center_crop=False, multi_crop=None, h_flip=False, img_prefix=None, base_name=True):
+    '''
+    '''
+    assert img_preproc_kwargs['keep_aspect_ratio'], logging.error('Mutable images testing should keep aspect ratio of input images')
+    results = dict()
+    for index,image in enumerate(image_list):
+        if img_prefix:
+            image = img_prefix + image 
+        tic = time.time()
+        _ = single_image_test(model, image, categories, input_shape, img_preproc_kwargs, center_crop=center_crop, h_flip=h_flip)
+        logging.info("Batch [{}]:\tbatch_time={:.3f}s".format(index+1, time.time()-tic))
+        if _:
+            results[_['File Name']] = _ 
+    return results
+
+
+def test_wrapper(model, image_or_list, categories, batch_size, input_shape, kwargs, center_crop=False, multi_crop=None, h_flip=False, img_prefix=None, base_name=True, single_img_test=False, mutable_img_test=False):
+    '''
+    '''
+    if single_img_test:
+        return single_image_test(model, image_or_list, categories, input_shape, kwargs, center_crop=center_crop, multi_crop=multi_crop, h_flip=h_flip)
+    elif mutable_img_test:
+        return mutable_images_test(model, image_or_list, categories, input_shape, kwargs, center_crop=center_crop, h_flip=h_flip, img_prefix=img_prefix, base_name=base_name)
+    else:
+        return generic_multi_gpu_test(model, image_or_list, categories, batch_size, input_shape, kwargs, center_crop=center_crop, multi_crop=multi_crop, h_flip=h_flip, img_prefix=img_prefix, base_name=base_name) 
