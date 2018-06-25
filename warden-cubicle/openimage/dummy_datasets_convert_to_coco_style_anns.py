@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# 
+# Convert dummy dataset of oiv4 style
+# to coco style annotations:
+# ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside
+# ->
+# coco style with absolute coordinates 
+
 
 from __future__ import print_function
 import sys
@@ -17,7 +24,7 @@ def main():
     '''
     params: /path/to/input/csv /path/to/output/files /path/to/image/files /path/to/category/file/ [ext,optional]jpg
     '''
-    coordinate_scale = False
+    coordinate_scale = False    # set True to load relative coordinates
     input_csv = sys.argv[1]
     output_json = os.path.join(sys.argv[2],os.path.splitext(os.path.basename(input_csv))[0] + '.json') 
     img_path = sys.argv[3]
