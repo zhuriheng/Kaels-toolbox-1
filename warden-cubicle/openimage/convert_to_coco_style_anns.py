@@ -22,6 +22,7 @@ def main():
     img_path = sys.argv[3]
     cat_path = sys.argv[4]
     err_lst = list()
+    unknown_lst = list()
     out_of_size_lst = list()
 
     # read anns
@@ -66,7 +67,13 @@ def main():
         tmp['id'] = count
         tmp['image_id'] = item['ImageID']
         # tmp['image_id'] = item['ImageIndex']
-        tmp['category_id'] = cat.index(item['LabelName']) + 1    # start from 1
+        try:
+            tmp['category_id'] = cat.index(item['LabelName']) + 1    # start from 1
+        except:
+            if not unknown_lst:
+                 print("WARNING: box of unknown class found!")
+            unknown_lst.append((item['ImageID'],width,height,tmp['id'],item['XMin'],item['YMin'],item['XMax'],item['YMax']))
+            continue
         tmp['segmentation'] = list() 
         # bbox = [x,y,w,h]
         bbox = [float(item['XMin'])*width, float(item['YMin'])*height, (float(item['XMax'])-float(item['XMin']))*width, (float(item['YMax'])-float(item['YMin']))*height]
@@ -101,6 +108,7 @@ def main():
     if err_lst:
         err_file = os.path.join(sys.argv[2],os.path.splitext(os.path.basename(input_csv))[0] + '_invalid_boxes.csv') 
         with open(err_file,'w') as f:
+            f.write('ImageID,Width,Height,BoxID,Box\n')
             for item in err_lst:
                 f.write('{}\n'.format(json.dumps(item)))
         print('invalid boxes wroten into {}'.format(err_file))
@@ -108,9 +116,19 @@ def main():
     if out_of_size_lst:
         out_file = os.path.join(sys.argv[2],os.path.splitext(os.path.basename(input_csv))[0] + '_out_of_size_images.csv') 
         with open(out_file, 'w') as f:
+            f.write('ImageID,Width,Height\n')
             for item in set(out_of_size_lst):
                 f.write('{}\n'.format(json.dumps(item)))
         print('images out of size wroten into {}'.format(out_file))
+    
+    if unknown_lst:
+       unknown_file = os.path.join(sys.argv[2],os.path.splitext(os.path.basename(input_csv))[0] + '_boxes_of_unknown_class.csv')
+       with open(unknown_file, 'w') as f:
+            f.write('ImageID,Width,Height,BoxID,Box\n')
+            for item in unknown_lst:
+                f.write('{}\n'.format(json.dumps(item)))
+       print('boxes of unknown class wroten into {}'.format(out_file))
+        
 
 if __name__ == '__main__':
     print('start converting...')
