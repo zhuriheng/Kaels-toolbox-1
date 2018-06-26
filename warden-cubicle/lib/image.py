@@ -83,15 +83,46 @@ def get_image_size_core(img_path):
 
     return width, height
 
-def check_bounding_box(bbox,width,height,img_id,digits=2):
+def check_bounding_box(bbox,width,height,img_id,digits=2,rel_coor=False,restrict=False,log_error=False):
     '''
     check whether bounding-box coordinates are valid
     bounding box format: xywh
     default approximate digits: .2f
     '''
     x,y,w,h = bbox
-    if x<0 or y<0 or (x+w)>(width+pow(0.1,digits)) or (y+h)>(height+pow(0.1,digits)):
-        # print('warning: encounterd invalid box {}, in image {}, w{}, h{}'.format(bbox, img_id, width, height))
-        return 1
-    else:
-        return 0
+    check = 0
+    if not restrict:
+        if rel_coor :
+            if x<0 or y<0 or (x+w)>1 or (y+h)>1:
+                check = 1
+        else:
+            if x<0 or y<0 or (x+w)>(width+pow(0.1,digits)) or (y+h)>(height+pow(0.1,digits)):
+                check = 1
+        if check==1 and log_error: 
+            print('warning: encounterd invalid box {}, in image {}, w{}, h{}'.format(bbox, img_id, width, height))
+        return check
+
+    elif restrict:
+        if x<0:
+            x=0
+            check = 1
+        if y<0:
+            y=0
+            check = 1
+        if rel_coor:
+            if (x+w)>1:
+                w=1-x
+                check = 1
+            if (y+h)>1:
+                h=1-y
+                check = 1
+        else:
+            if (x+w)>(width+pow(0.1,digits)):
+                w=width-x
+                check = 1
+            if (y+h)>(height+pow(0.1,digits)):
+                h=height-y
+                check = 1
+        if check==1 and log_error: 
+            print('warning: encounterd invalid box {}, in image {}, w{}, h{}'.format(bbox, img_id, width, height))
+        return x,y,w,h,check 

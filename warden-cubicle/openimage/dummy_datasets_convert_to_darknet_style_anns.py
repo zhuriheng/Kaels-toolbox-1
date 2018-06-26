@@ -5,7 +5,7 @@
 # to darknet style annotations:
 # ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside
 # ->
-# ClassIndex x(rel) y(rel) w(rel) h(rel) 
+# ClassIndex x-center(rel) y-center(rel) w(rel) h(rel) 
 
 
 from __future__ import print_function
@@ -54,21 +54,21 @@ def main():
             continue    
     
         image_id = item['ImageID']
-        category_id = cat.index(item['LabelName']) + 1    # start from 1
+        category_id = cat.index(item['LabelName'])    # start from 0
         # bbox = [x,y,w,h], relative coordinates
         if coordinate_scale:
             bbox = [float(item['XMin']), float(item['YMin']), float(item['XMax'])-float(item['XMin']), float(item['YMax'])-float(item['YMin'])]
         else:
             bbox = [float(item['XMin'])/width, float(item['YMin'])/height, (float(item['XMax'])-float(item['XMin']))/width, (float(item['YMax'])-float(item['YMin']))/height]
-        _bbox = [float('{:.2f}'.format(x)) for x in bbox]
-        check = check_bounding_box(_bbox, width, height, image_id)
+        bbox = [float('{:.6f}'.format(x)) for x in bbox]
+        x,y,w,h,check = check_bounding_box(bbox, width, height, image_id, rel_coor=True, restrict=True, log_error=True)
         if check:    # catch box
-            err_lst.append((image_id,width,height,count,_bbox))
+            err_lst.append((image_id,width,height,count,bbox))
 
         # write annotations
         ann_file = os.path.join(output_path,'{}.txt'.format(os.path.splitext(image_id)[0]))
         with open(ann_file,'a') as f:
-            f.write("{} {:.6f} {:.6f} {:.6f} {:.6f}\n".format(category_id, bbox[0],bbox[1],bbox[2],bbox[3]))
+            f.write("{} {} {} {} {}\n".format(category_id, x+w*0.5, y+h*0.5, w, h))
         count += 1
         if count%(len(raw)/20) == 0:
             print('processsing: {:.1f}%...'.format((100.0*count)/len(raw)))
