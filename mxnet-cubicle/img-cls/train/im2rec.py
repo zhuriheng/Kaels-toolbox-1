@@ -265,6 +265,9 @@ if __name__ == '__main__':
                 print('Creating .rec file from', fname, 'in', working_dir)
                 count += 1
                 image_list = read_list(fname)
+                print('center_crop:',args.center_crop)
+                print('resize:',args.resize)
+                print('force_resize:',args.force_resize)
                 # -- write_record -- #
                 if args.num_thread > 1 and multiprocessing is not None:
                     q_in = [multiprocessing.Queue(1024) for i in range(args.num_thread)]

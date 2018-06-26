@@ -16,23 +16,32 @@ import sys
 import random
 
 
-def mklst(input, output, basename=False):
+def mklst(input, output, basename=False, multi_label=False):
     lst = []
     file_in = open(input,'r')
     file_lst = open(output, 'w')
     i = 0
     for buff in file_in:
         if basename: 
-            lst.append(os.path.basename(buff.split()[0]), int(buff.split()[1]))
+            if not multi_label:
+                lst.append(os.path.basename(buff.split()[0]), int(buff.split()[1]))
+            else:
+                lst.append(os.path.basename(buff.split()[0]), int(buff.split()[1]), int(buff.split()[2]))
             i += 1
         else:
-            lst.append((buff.split()[0], int(buff.split()[1])))
+            if not multi_label:
+                lst.append((buff.split()[0], int(buff.split()[1])))
+            else:
+                lst.append((buff.split()[0], int(buff.split()[1]), int(buff.split()[2])))
             i += 1
     print 'total: ' + str(i)
     lst_index = range(i)
     random.shuffle(lst_index)
     for index in lst_index:
-        file_lst.write('{}\t{}\t{}\n'.format(index, lst[index][1], lst[index][0]))
+        if not multi_label:
+            file_lst.write('{}\t{}\t{}\n'.format(index, lst[index][1], lst[index][0]))
+        else:
+            file_lst.write('{}\t{}\t{}\t{}\n'.format(index, lst[index][1], lst[index][2], lst[index][0]))
     file_lst.close()
     file_in.close()
     print 'done'

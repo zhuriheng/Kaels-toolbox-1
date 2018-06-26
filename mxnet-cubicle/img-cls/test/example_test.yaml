@@ -1,0 +1,17 @@
+TEST:
+    LOG_PATH: /path/to/log/file
+    INPUT_IMG_LST: /path/to/input/image/list
+    INPUT_CAT_FILE: /path/to/input/categories/file 
+    OUTPUT_JSON_PATH: /path/to/output/result/json/file  
+    MODEL_PREFIX: /path/to/test/model/prefix 
+    MODEL_EPOCH: 0 
+    USE_GPU: True
+    GPU_IDX: [0]     # gpu indices 
+    BATCH_SIZE: 128     # mini-batch size on per gpu 
+    INPUT_SHAPE: (3, 224, 224)
+    MEAN_RGB: [123.68, 116.779, 103.939]
+    STD_RGB: [58.395, 57.12, 57.375]
+    USE_BASENAME: True  # use base image file name by default
+    FNAME_PARENT_LEVEL: 1
+    TOP_K: 1
+    LOG_ALL_CONFIDENCE: True

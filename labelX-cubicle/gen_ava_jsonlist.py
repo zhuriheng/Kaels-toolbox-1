@@ -79,12 +79,11 @@ def generate_dict(filename, prefix, classification=False, detection=False, clust
         if pre_ann:
             # ---- modify pre-annotated label here ----
             # temp['label']['class'][sub_task] = pre_ann[filename]
-            # temp['label']['class'][sub_task] = pulp_label[pre_ann[filename]['Ground-truth Label']]
             pass
             # -----------------------------------------
         elif pre_label:
             # tmp['data'].append({'class': pulp_label[pre_label]})
-            tmp['data'].append({'class': pre_label})
+            tmp['data'].append({'class': pulp_label[int(pre_label)]})
         temp['label'].append(tmp)
     if detection:
         tmp = dict()
@@ -118,16 +117,19 @@ def main():
     with open(args['<in-file>'], 'r') as f:         # load input file list
         file_lst = list()
         for buff in f:
-            if len(buff.strip().split()) not in [1,2]:      # input syntax error
+            if len(buff.strip().split()) == 1:      # input syntax error
+                file_lst.append(buff.strip())
+            elif len(buff.strip().split()) == 2:
+                file_lst.append(buff.strip().split())
+            else:
                 raise input_syntax_err
-            file_lst.append(buff.strip())
             
     with open(args['<out-list>'], 'w') as f:
-        for image in file_lst:
+        for image,label in file_lst:
             if len(image.strip().split()) == 2:
                 pre_label = image.strip().split()[1]
             temp_dict = generate_dict(image.split()[0], args['--prefix'], args['--classification'],
-                                      args['--detection'], args['--clustering'], sub_task, pre_ann, pre_label)
+                                      args['--detection'], args['--clustering'], sub_task, pre_ann, pre_label=label)
             f.write('{}\n'.format(json.dumps(temp_dict)))
 
 

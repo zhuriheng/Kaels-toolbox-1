@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# 
+# Convert dummy dataset of oiv4 style
+# to coco style annotations:
+# ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside
+# ->
+# coco style with absolute coordinates 
+
 
 from __future__ import print_function
 import sys
@@ -15,14 +22,18 @@ from image import get_image_size_core,check_bounding_box
 
 def main():
     '''
-    params: /path/to/input/csv /path/to/output/files /path/to/image/files /path/to/category/file
+    params: /path/to/input/csv /path/to/output/files /path/to/image/files /path/to/category/file/ [ext,optional]jpg
     '''
+    coordinate_scale = False    # set True to load relative coordinates
     input_csv = sys.argv[1]
     output_json = os.path.join(sys.argv[2],os.path.splitext(os.path.basename(input_csv))[0] + '.json') 
     img_path = sys.argv[3]
     cat_path = sys.argv[4]
+    if len(sys.argv) == 6:
+        ext = '.'+sys.argv[5]
+    else:
+        ext = str() 
     err_lst = list()
-    unknown_lst = list()
     out_of_size_lst = list()
 
     # read anns
@@ -39,7 +50,7 @@ def main():
     result['licenses'] = list()
     result['categories'] = list()
 
-    result['info'] = {"year":"2018", "version":"v4", "description":"openimage v4 bounding-box annotations", "contributor":"Northrend@github.com","url":None, "date_created":"2018-05-04"}
+    result['info'] = {"year":"2018", "version":"v1", "description":"dummy datasets bounding-box annotations", "contributor":"Northrend@github.com","url":None, "date_created":"2018-06-14"}
     
     _ = dict() 
     count = 0
@@ -49,9 +60,13 @@ def main():
         tmp = dict()
         tmp['id'] = item['ImageID']
         # tmp['id'] = item['ImageIndex']
-        tmp['file_name'] = item['ImageID'] + '.jpg'
+        tmp['file_name'] = item['ImageID'] + ext 
         tmp_img_path = os.path.join(img_path, tmp['file_name'])
-        width, height = get_image_size_core(tmp_img_path) 
+        try:
+            width, height = get_image_size_core(tmp_img_path) 
+        except:
+            print('Error image:',tmp_img_path)
+            continue    
         if width not in resize and height not in resize:
             # print('warning: image size may be wrong, {}, w{}, h{}'.format(tmp['id'],width,height))
             out_of_size_lst.append((item['ImageID'],width,height))
@@ -67,16 +82,13 @@ def main():
         tmp['id'] = count
         tmp['image_id'] = item['ImageID']
         # tmp['image_id'] = item['ImageIndex']
-        try:
-            tmp['category_id'] = cat.index(item['LabelName']) + 1    # start from 1
-        except:
-            if not unknown_lst:
-                 print("WARNING: box of unknown class found!")
-            unknown_lst.append((item['ImageID'],width,height,tmp['id'],item['XMin'],item['YMin'],item['XMax'],item['YMax']))
-            continue
+        tmp['category_id'] = cat.index(item['LabelName']) + 1    # start from 1
         tmp['segmentation'] = list() 
         # bbox = [x,y,w,h]
-        bbox = [float(item['XMin'])*width, float(item['YMin'])*height, (float(item['XMax'])-float(item['XMin']))*width, (float(item['YMax'])-float(item['YMin']))*height]
+        if coordinate_scale:
+            bbox = [float(item['XMin'])*width, float(item['YMin'])*height, (float(item['XMax'])-float(item['XMin']))*width, (float(item['YMax'])-float(item['YMin']))*height]
+        else:
+            bbox = [int(item['XMin']), int(item['YMin']), int(item['XMax'])-int(item['XMin']), int(item['YMax'])-int(item['YMin'])]
         tmp['bbox'] = [float('{:.2f}'.format(x)) for x in bbox]
         tmp['area'] = float('{:.2f}'.format(tmp['bbox'][2]*tmp['bbox'][3]))
         check = check_bounding_box(tmp['bbox'], width, height, item['ImageID'])
@@ -108,7 +120,6 @@ def main():
     if err_lst:
         err_file = os.path.join(sys.argv[2],os.path.splitext(os.path.basename(input_csv))[0] + '_invalid_boxes.csv') 
         with open(err_file,'w') as f:
-            f.write('ImageID,Width,Height,BoxID,Box\n')
             for item in err_lst:
                 f.write('{}\n'.format(json.dumps(item)))
         print('invalid boxes wroten into {}'.format(err_file))
@@ -116,19 +127,9 @@ def main():
     if out_of_size_lst:
         out_file = os.path.join(sys.argv[2],os.path.splitext(os.path.basename(input_csv))[0] + '_out_of_size_images.csv') 
         with open(out_file, 'w') as f:
-            f.write('ImageID,Width,Height\n')
             for item in set(out_of_size_lst):
                 f.write('{}\n'.format(json.dumps(item)))
         print('images out of size wroten into {}'.format(out_file))
-    
-    if unknown_lst:
-       unknown_file = os.path.join(sys.argv[2],os.path.splitext(os.path.basename(input_csv))[0] + '_boxes_of_unknown_class.csv')
-       with open(unknown_file, 'w') as f:
-            f.write('ImageID,Width,Height,BoxID,Box\n')
-            for item in unknown_lst:
-                f.write('{}\n'.format(json.dumps(item)))
-       print('boxes of unknown class wroten into {}'.format(out_file))
-        
 
 if __name__ == '__main__':
     print('start converting...')

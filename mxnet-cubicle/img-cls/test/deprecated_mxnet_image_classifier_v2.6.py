@@ -16,8 +16,14 @@ import numpy as np
 import re
 import csv
 import docopt
+import time
 from collections import namedtuple
 from AvaLib import _time_it
+
+
+cur_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(cur_path,'../lib'))
+from io_hybrid import *
 
 
 def _init_():
@@ -28,6 +34,8 @@ def _init_():
     Contributor: 
 
     Change log:
+    2018/05/31  v2.6    support log file name with parent path 
+    2018/04/18  v2.5    support print foward fps
     2017/12/29  v2.4    fix numpy truth value err bug
     2017/12/11  v2.3    fix center crop bug
     2017/12/07  v2.2    convert img-data to float before resizing
@@ -40,7 +48,7 @@ def _init_():
 
     Usage:
         mxnet_image_classifier.py       <in-list> <out-log> [-c|--confidence] [-t|--test] 
-                                        [--center-crop --multi-crop=int]
+                                        [--center-crop] [--output-fps] [--name-with-par=int]
                                         (--label=str --model-prefix=str --model-epoch=int)
                                         [--batch-size=int --img-width=int --data-prefix=str]
                                         [--top-k=int --label-position=int --gpu=int]
@@ -59,7 +67,7 @@ def _init_():
         -c --confidence             set to output confidence of each class
         -t --test                   single image test mode
         --center-crop               set to use center crop
-        --multi-crop=int            set to use multiple crop, should be choosen from 3,5,6,10
+        --output-fps                set to print foward frame per sec
         --gpu=int                   choose one gpu to run network [default: 0]
         --label=str                 text file which maps label index to concrete word
         --label-position=int        classname position in label file [default: 1]
@@ -72,14 +80,18 @@ def _init_():
         --mean=lst                  list of rgb mean value [default: 123.68,116.779,103.939]
         --std=lst                   list of rgb std value [default: 58.395,57.12,57.375]
         --pre-crop-width=int        set image resize width before cropping if center crop is true [default: 256]
+        --name-with-par=int         set to log filename of n level parent path
     '''
     print('=' * 80 + '\nArguments submitted:')
     for key in sorted(args.keys()):
         print('{:<20}= {}'.format(key.replace('--', ''), args[key]))
     print('=' * 80)
 
+# global vars
+FORWARD_TIME_TOTAL = 0
+FORWARD_COUNT = 0
 
-# golbal error file list
+# global error file list
 ERROR_LIST = list()
 
 
@@ -104,6 +116,15 @@ def _read_list(image_list_file):
     return image_list
 
 
+def _get_file_with_parents(filepath, level=1):
+    '''
+    '''
+    common = filepath
+    for i in range(level + 1):
+        common = os.path.dirname(common)
+    return os.path.relpath(filepath, common)
+
+
 def _index_to_classname(label_file, classname_position=1):
     '''
     load label file and get category list.
@@ -121,53 +142,18 @@ def _index_to_classname(label_file, classname_position=1):
 
 def center_crop(img, crop_width):
     _, height, width = img.shape
-    assert (height >= crop_width and width >= crop_width), 'crop size should be smaller than image size!'
+    assert (height > crop_width and width > crop_width), 'crop size should be larger than image size!'
     top = int(float(height) / 2 - float(crop_width) / 2)
     left = int(float(width) / 2 - float(crop_width) / 2)
     crop = img[:, top:(top + crop_width), left:(left + crop_width)]
     return crop
 
 
-def multi_crop(img, crop_width, crop_number=3):
-    _, height, width = img.shape
-    # crop_list = list()
-    assert (height >= crop_width and width >= crop_width), 'image size should be larger than crop size!'
-    assert crop_width == min(height, width), 'crop size should be equal to short edge'
-    if height > width:
-        cent_crop = center_crop(img, crop_width)
-        top_crop = img[:, :crop_width, :]
-        bottom_crop = img[:, -crop_width:, :]
-        if crop_number == 3:
-            return [top_crop, cent_crop, bottom_crop]
-        elif crop_number == 5:
-            stride = int((float(height)-float(crop_width))/4) 
-            top_crop_2 = img[:, stride:(stride + crop_width), :]
-            bottom_crop_2 = img[:, (-crop_width - stride):-stride, :]
-            return [top_crop, top_crop_2, cent_crop, bottom_crop_2, bottom_crop]
-    elif width > height:
-        cent_crop = center_crop(img, crop_width)
-        left_crop = img[:, :, :crop_width]
-        right_crop = img[:, :, -crop_width:]
-        if crop_number == 3:
-            return [left_crop, cent_crop, right_crop]
-        elif crop_number == 5:
-            stride = int((float(width)-float(crop_width))/4)
-            left_crop_2 = img[:, :, stride:(stride + crop_width)]
-            right_crop_2 = img[:, :, (-crop_width - stride):-stride]
-            return [left_crop, left_crop_2, cent_crop, right_crop_2, right_crop]
-    else:
-        if crop_number == 3:
-            return[img, img, img]
-        elif crop_number == 5:
-            return[img, img, img, img, img]
-
-
 def net_init():
     '''
     initialize mxnet model
     '''
-    # batch_size = int(args['--batch-size'])
-    batch_size = int(args['--multi-crop']) if args['--multi-crop'] else int(args['--batch-size']) 
+    batch_size = int(args['--batch-size'])
     image_width = int(args['--img-width'])
 
     # get compute graph
@@ -196,9 +182,9 @@ def net_single_infer(model, list_image_path):
     '''
     predict label of one single image.
     '''
-    global ERROR_LIST
+    global ERROR_LIST, FORWARD_TIME_TOTAL, FORWARD_COUNT
     Batch = namedtuple('Batch', ['data'])
-    batch_size = int(args['--multi-crop']) if args['--multi-crop'] else int(args['--batch-size']) 
+    batch_size = int(args['--batch-size'])
     image_width = int(args['--img-width'])
     resize_width = int(args['--pre-crop-width']) if args['--center-crop'] else image_width
     k = int(args['--top-k'])
@@ -207,6 +193,7 @@ def net_single_infer(model, list_image_path):
     std_r, std_g, std_b = float(args['--std'].split(',')[0]), float(args['--std'].split(',')
                                                                     [1]), float(args['--std'].split(',')[2])
 
+    # tic = time.time()
     img_batch = mx.nd.array(np.zeros((batch_size, 3, image_width, image_width)))
     for index, image_path in enumerate(list_image_path):
         # image preprocessing
@@ -216,58 +203,51 @@ def net_single_infer(model, list_image_path):
                 raise empty_image
         except:
             img_read = np.zeros((resize_width, resize_width, 3), dtype=np.uint8)
-            ERROR_LIST.append(os.path.basename(image_path))
-            print('image error: ', image_path, ', inference result will be deprecated!')
-        img = cv2.cvtColor(img_read, cv2.COLOR_BGR2RGB)
-        img = img.astype(float)
-        # print(img.shape)
-        if args['--multi-crop'] or args['--center-crop']: 
-            height, width, _ = img.shape
-            if height > width:
-                img = cv2.resize(img, (resize_width, int(float(height)*resize_width/width)))
+            if not args['--name-with-par']:
+                ERROR_LIST.append(os.path.basename(image_path))
             else:
-                img = cv2.resize(img, (int(float(width)*resize_width/height), resize_width))
+                level = int(args['--name-with-par'])
+                ERROR_LIST.append(_get_file_with_parents(image_path,level=level))
+            print('image error: ', image_path, ', inference result will be deprecated!')
+        if args['--center-crop']:
+            kwargs=dict()
+            kwargs['resize_min_max'] = (256,10000) 
+            kwargs['mean_rgb'] = [mean_r, mean_g, mean_b]
+            kwargs['std_rgb'] = [std_r, std_g, std_b]
+            img = np_img_preprocessing(img_read, keep_aspect_ratio=True, **kwargs)
+            img = center_crop(img, image_width)
         else:
+            img = cv2.cvtColor(img_read, cv2.COLOR_BGR2RGB)
+            img = img.astype(float)
             img = cv2.resize(img, (resize_width, resize_width))
-        # print(img.shape)
-
-        # # crop test
-        # for idx, tmp in enumerate(img_crop):
-        #     tmp = np.swapaxes(tmp, 1, 2)
-        #     tmp = np.swapaxes(tmp, 0, 2)
-        #     cv2.imwrite('test_{}.jpg'.format(idx),tmp)
-
-        # img[:,:,0] -= mean_r
-        # img[:,:,0] /= std_r
-        # img[:,:,1] -= mean_g
-        # img[:,:,1] /= std_g
-        # img[:,:,2] -= mean_b
-        # img[:,:,2] /= std_b
-        img -= [mean_r, mean_g, mean_b]
-        img /= [std_r, std_g, std_b]
-        # (h,w,c) => (b,c,h,w)
-        img = np.swapaxes(img, 0, 2)
-        img = np.swapaxes(img, 1, 2)
-        # img = img[np.newaxis, :]
-        if args['--multi-crop']:
-            img_crop = multi_crop(img, image_width, int(args['--multi-crop']))
-            for i,tmp in enumerate(img_crop): 
-                img_batch[i] = mx.nd.array(tmp)
-            # assert False, 'debugging'
-        else:
-            if args['--center-crop']:
-                img = center_crop(img, image_width)
+            # img[:,:,0] -= mean_r
+            # img[:,:,0] /= std_r
+            # img[:,:,1] -= mean_g
+            # img[:,:,1] /= std_g
+            # img[:,:,2] -= mean_b
+            # img[:,:,2] /= std_b
+            img -= [mean_r, mean_g, mean_b]
+            img /= [std_r, std_g, std_b]
+            # (h,w,c) => (b,c,h,w)
+            img = np.swapaxes(img, 0, 2)
+            img = np.swapaxes(img, 1, 2)
+            # img = img[np.newaxis, :]
             # img_batch[index] = mx.nd.array(img)[0]
-            img_batch[index] = mx.nd.array(img)
+        img_batch[index] = mx.nd.array(img)
     # print(mx.nd.array(img).shape)
     # print(img_batch.asnumpy())
 
-    # forward propagation
+    ## forward propagation
     # print(Batch([mx.nd.array(img)]))
     # model.forward(Batch([mx.nd.array(img)]))
+    
+    tic = time.time()
     model.forward(Batch([img_batch]))
     output_prob_batch = model.get_outputs()[0].asnumpy()
-    # print(output_prob_batch)
+    toc = time.time()
+    if args['--output-fps']:
+        FORWARD_TIME_TOTAL += (toc-tic)
+        FORWARD_COUNT += 1
 
     # ---- debugging ----
     # conv_w = model.get_params()[0]['conv0_weight']
@@ -281,12 +261,7 @@ def net_single_infer(model, list_image_path):
     # get prediction result
     list_result_dict = list()
     for index in xrange(len(list_image_path)):
-        if args['--multi-crop']:
-            # 3x3:[[cls_0], [cls_1], [cls_2]] -> 
-            # 3x1:[cls_0_avg, cls_1_avg, cls_2_avg] 
-            output_prob = np.average(output_prob_batch,axis=0)
-        else:
-            output_prob = output_prob_batch[index]
+        output_prob = output_prob_batch[index]
 
         # sort index-list and create sorted rate-list
         index_list = output_prob.argsort()
@@ -294,7 +269,11 @@ def net_single_infer(model, list_image_path):
 
         # write result dictionary
         result_dict = dict()
-        result_dict['File Name'] = os.path.basename(list_image_path[index])
+        if not args['--name-with-par']:
+            result_dict['File Name'] = os.path.basename(list_image_path[index])
+        else:
+            level = int(args['--name-with-par'])
+            result_dict['File Name'] = _get_file_with_parents(list_image_path[index], level=level)
         # get top-k indices and revert to top-1 at first
         result_dict['Top-{} Index'.format(k)] = index_list.tolist()[-k:][::-1]
         result_dict['Top-{} Class'.format(k)] = [label_list[int(i)]
@@ -345,23 +324,18 @@ def test_2():
     print(net_list_infer(model, image_list))
 
 
-def _check_args(args):
-    if args['--multi-crop']:
-        num_crop = int(args['--multi-crop'])
-        assert num_crop in [3,5,6,10], 'invalid multi-crop number: {}'.foramt(num_crop)
-        assert int(args['--batch-size']) == 1, 'only one single image could be predicted each batch since multi-crop is on'
-    print('arguments checked')
-    
-
 @_time_it.time_it
 def main():
     '''
     image classification job for list of images
     '''
-    _check_args(args)
+    global FORWARD_TIME_TOTAL, FORWARD_COUNT
     image_list = _read_list(args['<in-list>'])
     model = net_init()
     result = net_list_infer(model, image_list)
+    # print('FORWARD_TIME_TOTAL, FORWARD_COUNT,',FORWARD_TIME_TOTAL,FORWARD_COUNT)
+    if args['--output-fps']: 
+        print('FPS:',float(FORWARD_TIME_TOTAL)/FORWARD_COUNT)
     log_result = open(args['<out-log>'], 'w')
     json.dump(result, log_result, indent=4)
     log_result.close()
