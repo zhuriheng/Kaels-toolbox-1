@@ -235,6 +235,7 @@ __C.TEST.LOG_MODE = "w"
 
 # ---- test setting ----
 __C.TEST.INPUT_IMG_LST = ""
+__C.TEST.INPUT_IMG_PREFIX = ""
 __C.TEST.INPUT_CAT_FILE = ""
 __C.TEST.OUTPUT_JSON_PATH = ""
 __C.TEST.MODEL_PREFIX = ""

@@ -101,6 +101,7 @@ def main():
 
     # init
     devices = [mx.gpu(x) for x in cfg.GPU_IDX]
+    img_prefix = cfg.INPUT_IMG_PREFIX if cfg.INPUT_IMG_PREFIX else None
     if cfg.MULTI_CROP:
         assert len(devices)==1, logger.error('Only single gpu mode is supported under multi-crop testintg') 
     batch_size_per_gpu = cfg.MULTI_CROP_NUM if cfg.MULTI_CROP else cfg.BATCH_SIZE
@@ -132,7 +133,7 @@ def main():
         logger.info('Result:\n{}'.format(pprint.pformat(result)))
     else:
         logger.info('List of images testing mode...')
-        result = test_wrapper(model, image_list, categories, batch_size, input_shape, kwargs, center_crop=center_crop, multi_crop=multi_crop_num, h_flip=h_flip, img_prefix=None, base_name=True, single_img_test=False, mutable_img_test=cfg.MUTABLE_IMAGES_TEST)
+        result = test_wrapper(model, image_list, categories, batch_size, input_shape, kwargs, center_crop=center_crop, multi_crop=multi_crop_num, h_flip=h_flip, img_prefix=img_prefix, base_name=True, single_img_test=False, mutable_img_test=cfg.MUTABLE_IMAGES_TEST)
         # write json file
         logger.info('Writing result into json file: {}'.format(cfg.OUTPUT_JSON_PATH))
         with open(cfg.OUTPUT_JSON_PATH,'w') as f:
