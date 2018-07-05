@@ -13,16 +13,15 @@ import numpy as np
 import docopt
 
 
-def net_init(output_layer='flatten0_output',batch_size=1,image_width=224):
+def net_init(model_prefix,model_epoch,gpu=0,output_layer='flatten0_output',batch_size=1,image_width=224):
     '''
     initialize mxnet model
     '''
-    epoch = 16
     # get compute graph
-    sym, arg_params, aux_params = mx.model.load_checkpoint(sys.argv[1], epoch)   # load original model
+    sym, arg_params, aux_params = mx.model.load_checkpoint(model_prefix, model_epoch)   # load original model
     output_layer = sym.get_internals()['flatten0_output']
     # bind module with graph
-    model = mx.mod.Module(symbol=output_layer, context=mx.gpu(0), label_names=None)
+    model = mx.mod.Module(symbol=output_layer, context=mx.gpu(gpu), label_names=None)
     model.bind(for_training=False, data_shapes=[('data', (batch_size, 3, image_width, image_width))], label_shapes=model._label_shapes)
 
     # load model parameters
@@ -54,25 +53,29 @@ def extra_feature(model, image_path):
     return output
 
 def main():
+    '''
+    :inputs: /path/to/model/prefix epoch /path/to/images.lst /path/to/result.npy /path/to/image/prefix
+    '''
     # root_path = './test-images/'
-    root_path = sys.argv[4] 
-    with open(sys.argv[2],'r') as f:
+    root_path = sys.argv[5] 
+    with open(sys.argv[3],'r') as f:
         images = [os.path.join(root_path,x.strip()) for x in f.readlines()]
     image_number = len(images)
     feature = np.zeros((image_number,2048))
-    model = net_init()
-    tic = time.time()
+    model = net_init(sys.argv[1],int(sys.argv[2]),gpu=7)
+    tic_0 = time.time()
     for i in xrange(image_number):
-        print('extracting {}th img...'.format(i))
-        output =  extra_feature(model, images[i])
+	tic = time.time()
+        output = extra_feature(model, images[i])
+        print('Batch [{}]: {:.4f}s'.format(i, time.time()-tic))
         if np.shape(output) != tuple():
             feature[i] = output
-    print('extraction time: {:.6f}s'.format(time.time()-tic))
+    print('Total time: {:.4f}s'.format(time.time()-tic_0))
     try:
-        np.save(sys.argv[3], feature)
+        np.save(sys.argv[4], feature)
     except:
         np.save('./tmp.npy', feature)
-        print('saving failed, result file saved to ./tmp.npy')
+        print('Saving failed, result file saved to ./tmp.npy')
     print('...done')
     # print('==> Original params:')
     # pprint.pprint(zip(sym.list_arguments(), sym.infer_shape(data=(1, 3, 224, 224))[0]))
