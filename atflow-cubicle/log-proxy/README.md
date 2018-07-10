@@ -14,13 +14,29 @@
 
 可以在下载完成后重命名为 log_proxy，并**确认文件的可执行权限**
 
+#### v1.2 
+
+> update 2018-05-23
+
+* [linux](http://p4ukyt7s7.bkt.clouddn.com/log_proxy/v1.2/log_proxy_linux)
+
+* [mac](http://p4ukyt7s7.bkt.clouddn.com/log_proxy/v1.2/log_proxy_mac)
+
+#### v1.1 
+
+> update 2018-04-02
+
+* [linux](http://p4ukyt7s7.bkt.clouddn.com/log_proxy/v1.1/log_proxy_linux)
+
+* [mac](http://p4ukyt7s7.bkt.clouddn.com/log_proxy/v1.1/log_proxy_mac)
+
 #### v1.0 
 
 > update 2018-02-28
 
 * [linux](http://p4ukyt7s7.bkt.clouddn.com/log_proxy/v1.0/log_proxy_linux)
 
-* [osx](http://p4ukyt7s7.bkt.clouddn.com/log_proxy/v1.0/log_proxy_osx)
+* [mac](http://p4ukyt7s7.bkt.clouddn.com/log_proxy/v1.0/log_proxy_mac)
 
 ### rock 'n roll
 

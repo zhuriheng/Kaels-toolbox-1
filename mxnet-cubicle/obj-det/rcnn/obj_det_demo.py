@@ -119,13 +119,13 @@ def demo_net(predictor, image_name, vis=False, save_dir='./', save_name='tmp.jpg
         return None
 
     # print results
-    print('class ---- [[x1, x2, y1, y2, confidence]]')
+    print('class ---- [[x1, y1, x2, y2, confidence]]')
     for ind, boxes in enumerate(boxes_this_image):
         if len(boxes) > 0:
             print('---------', CLASSES[ind], '---------')
             print(boxes)
             for box in boxes:
-                tmp_box = box.tolist()[:4]
+                tmp_box = box.tolist()[:]
                 tmp_box.append(str(CLASSES[ind]))
                 result_lst.append(tmp_box)
     if vis:

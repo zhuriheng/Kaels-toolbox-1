@@ -1,0 +1,31 @@
+TRAIN:
+    # path
+    LOG_PATH: /path/to/logfile.log 
+    OUTPUT_MODEL_PREFIX: /path/to/model/with/prefix 
+    TRAIN_REC: /path/to/train.rec 
+    DEV_REC: /path/to/dev.rec 
+
+    # training
+    BATCH_SIZE: 64  # mini-batch size per gpu
+    GPU_IDX: [0, 1] # use gpu 0 and 1
+    LOG_INTERVAL: 80
+    LOG_NET_PARAMS: True    # print params of each net
+    MAX_EPOCHS: 100
+    METRICS: [acc, ce]  # callback accuracy and cross-entropy loss
+    NUM_CLASSES: 1000
+    NUM_SAMPLES: 10000
+    PROCESS_THREAD: 4  # number of thread to pre-process recordio files
+    RAND_CROP: True
+    RAND_MIRROR: True
+    TEST_IO_MODE: False
+    
+    # learning hyper params
+    BASE_LR: 0.1
+    LR_FACTOR: 0.1
+    STEP_EPOCHS: [30,60,90] 
+
+    # finetune
+    FINETUNE: True
+    FT:
+        PRETRAINED_MODEL_PREFIX: /path/to/pretrained/model/with/prefix 
+        PRETRAINED_MODEL_EPOCH: 0   

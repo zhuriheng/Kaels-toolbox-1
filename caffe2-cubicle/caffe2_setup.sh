@@ -56,7 +56,7 @@ pip install \
 echo '==> clone and build...' 
 cd /opt/
 # Clone Caffe2's source code from our Github repository
-# git clone --recursive https://github.com/caffe2/caffe2.git caffe2 
+git clone --recursive https://github.com/caffe2/caffe2.git caffe2 
 cd caffe2
 # Create a directory to put Caffe2's build files in
 mkdir build
@@ -68,3 +68,4 @@ cd build
 cmake ..
 # Compile, link, and install Caffe2
 make install -j $(nproc) 
+ldconfig

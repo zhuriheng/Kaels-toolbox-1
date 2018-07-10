@@ -17,21 +17,23 @@ import docopt
 def _init_():
     '''
     Script for converting labelX-standard jsonlist to groundtruth file
-    Update: 2018/02/08
+    Update: 2018-06-12 19:36:24 
     Author: @Northrend
     Contributor: 
 
     Change log:
-    2018/02/08  v1.2          fix json syntax bug
-    2017/12/13  v1.1          support detection
-    2017/12/07  v1.0          basic functions
+    2018/06/12  v2.1                    convert detection annotations to oiv4 style 
+    2018/03/28  v2.0                    adapt new ava json standard
+    2018/02/08  v1.2                    fix json syntax bug
+    2017/12/13  v1.1                    support detection
+    2017/12/07  v1.0                    basic functions
 
     Usage:
-    labelx_jsonlist_adapter.py          <in-list> <out-file> [-c|--classification]
+    ava_jsonlist_adapter.py             <in-list> <out-file> [-c|--classification]
                                         [ -d|--detection -l|--clustering ]
-                                        [--sub-task=str --label=str]
-    labelx_jsonlist_adapter.py          -v | --version
-    labelx_jsonlist_adapter.py          -h | --help
+                                        [--label=str --oiv4]
+    ava_jsonlist_adapter.py             -v | --version
+    ava_jsonlist_adapter.py             -h | --help
 
     Arguments:
         <in-list>                       input json list path
@@ -44,9 +46,8 @@ def _init_():
         -d --detection                  detection task mode
         -l --clustering                 clustering task mode
         -------------------------------------------------------------------------------------------
-        --sub-task=str                  classification sub-task type, shouled be choosen from 
-                                        [general, pulp, terror, places].
         --label=str                     path to index-classname mapping csv file                              
+        --oiv4                          set to convert detection annotations to oiv4 style
     '''
     print('=' * 80 + '\nArguments submitted:')
     for key in sorted(args.keys()):
@@ -78,13 +79,12 @@ def main():
     err_num = 0
     if args['--classification']:
         assert args['--label'], 'index-classname mapping file is required.'
-        assert args['--sub-task'], 'sub-task should be provided in classification.'
+        # assert args['--sub-task'], 'sub-task should be provided in classification.'
         category = get_category(args['--label'])
         for item in json_lst:
             try:
                 temp_dict = json.loads(item.strip())
                 img = os.path.basename(temp_dict['url'])
-                # label = category.index(temp_dict['label']['class'][args['--sub-task']])
                 label = category.index(temp_dict['label'][0]['data'][0]['class'])
             except:
                 print('syntax error:',item.strip())
@@ -93,26 +93,40 @@ def main():
             output_file.write('{} {}\n'.format(img, label))
         print('err_num:', err_num)
     elif args['--detection']:
-        dict_ann = dict()
-        for item in json_lst:
-            temp_dict = json.loads(item.strip())
-            img = os.path.basename(temp_dict['url'])
-            if img not in dict_ann:
-                dict_ann[img] = list()
-            try:
-                for instance in temp_dict['label']['detect']['general_d']['bbox']:
-                    ins_ann = list()
-                    ins_ann.append(instance['pts'][0][0])
-                    ins_ann.append(instance['pts'][0][1])
-                    ins_ann.append(instance['pts'][2][0])
-                    ins_ann.append(instance['pts'][2][1])
-                    ins_ann.append(instance['class'])
-                    dict_ann[img].append(ins_ann)
-            except:
-                print('syntax error or no object:',item.strip())
-                err_num += 1
-                continue
-        json.dump(dict_ann, output_file, indent=4)
+        if args['--oiv4']:
+            output_file.write('ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside\n')
+            for item in json_lst:
+                temp_dict = json.loads(item.strip())
+                img_id = os.path.basename(temp_dict['url'])
+                try:
+                    for instance in temp_dict['label'][0]['data']:
+                        output_file.write('{},labelx,{},1,{},{},{},{},0,0,0,0,0\n'.format(img_id,instance['class'],instance['bbox'][0][0],instance['bbox'][2][0],instance['bbox'][0][1],instance['bbox'][2][1]))
+                except:
+                    print('syntax error or no object:',item.strip())
+                    err_num += 1
+                    continue
+
+        else:
+            dict_ann = dict()
+            for item in json_lst:
+                temp_dict = json.loads(item.strip())
+                img = os.path.basename(temp_dict['url'])
+                if img not in dict_ann:
+                    dict_ann[img] = list()
+                try:
+                    for instance in temp_dict['label'][0]['data']:
+                        ins_ann = list()
+                        ins_ann.append(instance['bbox'][0][0])   # x1
+                        ins_ann.append(instance['bbox'][0][1])   # y1
+                        ins_ann.append(instance['bbox'][2][0])   # x2
+                        ins_ann.append(instance['bbox'][2][1])   # y2
+                        ins_ann.append(instance['class'])
+                        dict_ann[img].append(ins_ann)
+                except:
+                    print('syntax error or no object:',item.strip())
+                    err_num += 1
+                    continue
+            json.dump(dict_ann, output_file, indent=4)
         print('err_num:', err_num)
     output_file.close()
     input_file.close()

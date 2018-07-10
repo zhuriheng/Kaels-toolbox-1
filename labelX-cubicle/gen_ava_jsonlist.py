@@ -22,11 +22,14 @@ def _init_():
     Contributor: 
 
     Change log:
+    2018/05/03   v1.1        support detection 
     2018/03/13   v1.0        basic functions
 
     Usage:
         gen_ava_jsonlist.py          <in-file> <out-list> 
-                                     [-c|--classification -d|--detection -l|--clustering]
+                                     [ -c | --classification]
+                                     [ -d | --detection ]
+                                     [ -l | --clustering ]
                                      [--prefix=str --sub-task=str --pre-json=str --pre-label=str]
         gen_ava_jsonlist.py          -v | --version
         gen_ava_jsonlist.py          -h | --help
@@ -43,8 +46,7 @@ def _init_():
         -l --clustering                 clustering task mode
         -------------------------------------------------------------------------------------------
         --prefix=str                    prefix of each url, such as bucket-domain.
-        --sub-task=str                  classification sub-task type, shouled be choosen from 
-                                        [general, pulp, terror, places].
+        --sub-task=str                  sub-task type such as general, pulp, terror, places.
         --pre-json=str                  optional pre-annotation json, required under clusering task.
         --pre-label=str                 optional pre-annotation label, such as "cat".
     '''
@@ -77,19 +79,24 @@ def generate_dict(filename, prefix, classification=False, detection=False, clust
         if pre_ann:
             # ---- modify pre-annotated label here ----
             # temp['label']['class'][sub_task] = pre_ann[filename]
-            # temp['label']['class'][sub_task] = pulp_label[pre_ann[filename]['Ground-truth Label']]
             pass
             # -----------------------------------------
         elif pre_label:
             # tmp['data'].append({'class': pulp_label[pre_label]})
-            tmp['data'].append({'class': pre_label})
+            tmp['data'].append({'class': pulp_label[int(pre_label)]})
         temp['label'].append(tmp)
-    # if detection:
-    #     temp['label']['detect'] = {'general_d': {}}
-    #     if pre_ann:
-    #         # ---- modify pre-annotated label here ----
-    #         temp['label']['detect']['general_d'] = pre_ann[filename]
-    #         # -----------------------------------------
+    if detection:
+        tmp = dict()
+        tmp['type'] = 'detection'
+        tmp['version'] = '1'
+        tmp['name'] = sub_task
+        tmp['data'] = list()
+        if pre_ann:
+            pass
+            # ---- modify pre-annotated label here ----
+            # temp['label']['detect']['general_d'] = pre_ann[filename]
+            # -----------------------------------------
+        temp['label'].append(tmp)
     # if clustering:
     #     assert pre_ann, 'pre-annotation file should be provided under clustering task.'
     #     # ---- modify pre-annotated label here ----
@@ -110,16 +117,19 @@ def main():
     with open(args['<in-file>'], 'r') as f:         # load input file list
         file_lst = list()
         for buff in f:
-            if len(buff.strip().split()) not in [1,2]:      # input syntax error
+            if len(buff.strip().split()) == 1:      # input syntax error
+                file_lst.append(buff.strip())
+            elif len(buff.strip().split()) == 2:
+                file_lst.append(buff.strip().split())
+            else:
                 raise input_syntax_err
-            file_lst.append(buff.strip())
             
     with open(args['<out-list>'], 'w') as f:
-        for image in file_lst:
+        for image,label in file_lst:
             if len(image.strip().split()) == 2:
                 pre_label = image.strip().split()[1]
             temp_dict = generate_dict(image.split()[0], args['--prefix'], args['--classification'],
-                                      args['--detection'], args['--clustering'], sub_task, pre_ann, pre_label)
+                                      args['--detection'], args['--clustering'], sub_task, pre_ann, pre_label=label)
             f.write('{}\n'.format(json.dumps(temp_dict)))
 
 
